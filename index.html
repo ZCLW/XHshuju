@@ -587,7 +587,7 @@ a{color:inherit;text-decoration:none}
         <li>点击「添加行/列」扩展表格，点击「清空」重置</li>
         <li>点击「📅 日期条」展开/收起日历；点击日期打开<strong>当天详情页</strong>：直接看到当天传代/接毒/编号/送检的明细小表格，可写备注、传照片，<strong>点底部「💾 保存当天记录」保存</strong>（左右箭头切前后天）</li>
         <li>带紫点的日期表示有记录；点详情页里某块数据的「查看/编辑 →」会跳到该模板的表格继续编辑</li>
-        <li>数据自动保存在浏览器本地，刷新不丢失；右上「⚙ 数据」可备份 / 导入 JSON</li>
+        <li>数据自动保存在浏览器本地（原图存 IndexedDB，不压缩、不进 JSON）；在「⚙ 数据」里配置 GitHub 后，每次「保存当天记录」会把当天 JSON 与原图上传到仓库、导出 Excel 也会覆盖上传</li>
         <li>导出 Excel：右下紫色「↓」按钮导出<strong>当前表格</strong>；详情页底部「导出 Excel」导出<strong>当天全部</strong>数据</li>
         <li>导出时会弹出系统分享面板 → 选「<strong>存储到"文件"</strong>」即可存进手机文件 App 的任意文件夹（电脑端不支持分享时自动改为下载）</li>
       </ol>
@@ -708,7 +708,12 @@ function loadState() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed === 'object') return parsed;
+      if (parsed && typeof parsed === 'object') {
+        // 浅合并顶层字段，避免旧版本数据缺字段导致报错
+        const d = defaultState();
+        for (const k in d) if (!(k in parsed)) parsed[k] = d[k];
+        return parsed;
+      }
     }
   } catch (e) { console.warn('loadState failed', e); }
   return defaultState();
@@ -722,7 +727,8 @@ function defaultState() {
     workSettingsByTpl: {},
     paramsByTpl: {},
     tables: { passage: { headers: [], rows: [] }, infection: { headers: [], rows: [] }, submission: { headers: [], rows: [] }, harvest: { headers: [], rows: [] } },
-    history: {}, // { '2026-08-29': { notes, images, generated: { passage:{headers,rows}, ... } } }
+    history: {}, // { '2026-08-29': { notes, images:[{key,name,type}], generated: { passage:{headers,rows}, ... } } }
+    github: { enabled: false, token: '', owner: '', repo: '', branch: 'main' },
     settings: { defaultOperator: DEFAULT_OPERATOR },
   };
 }
@@ -954,30 +960,76 @@ function exportToXlsHtml(headers, rows, filename, sheetName) {
 }
 
 /* ==========================================================================
-   图片压缩（800px，base64）
+   图片：原图存 IndexedDB（不压缩、不进 JSON）
+   day.images 只存元数据 { key, name, type }，字节存在 IDB
    ========================================================================== */
-function compressImage(file, maxWidth) {
-  maxWidth = maxWidth || 800;
+const IDB_NAME = 'wb_lab_images', IDB_STORE = 'images';
+let _idb = null;
+function idbOpen() {
   return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = e => {
-      const img = new Image();
-      img.onload = () => {
-        const ratio = Math.min(1, maxWidth / img.width);
-        const w = Math.round(img.width * ratio);
-        const h = Math.round(img.height * ratio);
-        const canvas = document.createElement('canvas');
-        canvas.width = w; canvas.height = h;
-        const ctx = canvas.getContext('2d');
-        ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h);
-        ctx.drawImage(img, 0, 0, w, h);
-        resolve(canvas.toDataURL('image/jpeg', 0.78));
-      };
-      img.onerror = reject;
-      img.src = e.target.result;
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
+    if (_idb) return resolve(_idb);
+    const r = indexedDB.open(IDB_NAME, 1);
+    r.onupgradeneeded = () => { if (!r.result.objectStoreNames.contains(IDB_STORE)) r.result.createObjectStore(IDB_STORE); };
+    r.onsuccess = () => { _idb = r.result; resolve(_idb); };
+    r.onerror = () => reject(r.error);
+  });
+}
+async function idbPutImage(key, blob) {
+  const db = await idbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(IDB_STORE, 'readwrite');
+    tx.objectStore(IDB_STORE).put(blob, key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+async function idbGetImage(key) {
+  const db = await idbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(IDB_STORE, 'readonly');
+    const rq = tx.objectStore(IDB_STORE).get(key);
+    rq.onsuccess = () => resolve(rq.result || null);
+    rq.onerror = () => reject(rq.error);
+  });
+}
+async function idbDeleteImage(key) {
+  const db = await idbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(IDB_STORE, 'readwrite');
+    tx.objectStore(IDB_STORE).delete(key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+// 返回图片的可显示 URL（旧数据 dataURL 直接用，新数据从 IDB 取 blob）
+async function imageSrc(img) {
+  if (typeof img === 'string') return img; // 兼容旧版 dataURL
+  if (img && img.key) {
+    const blob = await idbGetImage(img.key);
+    if (blob) return URL.createObjectURL(blob);
+  }
+  return '';
+}
+
+/* base64 工具（GitHub API 需要） */
+function bytesToBase64(bytes) {
+  let bin = '';
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    bin += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+  }
+  return btoa(bin);
+}
+function utf8ToBase64(str) {
+  const enc = new TextEncoder().encode(str);
+  return bytesToBase64(enc);
+}
+function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = () => resolve(bytesToBase64(new Uint8Array(fr.result)));
+    fr.onerror = reject;
+    fr.readAsArrayBuffer(blob);
   });
 }
 
@@ -1259,25 +1311,37 @@ function renderDayDetail() {
     <div class="dd-section">
       <div class="dd-section-title">✏️ 备注</div>
       <textarea class="dd-note" id="dd-note-input" placeholder="记录这一天的备注……">${escapeHtml(notes)}</textarea>
-      <div class="dd-saved-tip">备注、照片会随下方「保存当天记录」一起写入本地存储</div>
+      <div class="dd-saved-tip">备注、照片随「保存当天记录」写入本地，并同步到 GitHub（若已配置）</div>
     </div>
     <div class="dd-section">
       <div class="dd-section-title">📷 照片（${images.length}/9）</div>
       <div class="dd-photo-bar">
         <button class="btn btn-secondary btn-sm" onclick="document.getElementById('dd-image-input').click()">＋ 添加照片</button>
         <input type="file" id="dd-image-input" accept="image/*" multiple style="display:none" onchange="onDayImages(this)">
-        <span class="dd-photo-count">自动压缩保存</span>
+        <span class="dd-photo-count">原图保存（存 IndexedDB，不入 JSON）</span>
       </div>
       <div class="dd-images" id="dd-images">
         ${images.map((img, i) => `
           <div class="dd-img">
-            <img src="${img}" onclick="viewImage('${img}')">
+            <img data-idx="${i}" src="" onclick="viewImageByIndex(${i})">
             <button class="del-img" onclick="removeDayImage(${i})">×</button>
           </div>
         `).join('')}
       </div>
     </div>
   `;
+  // 异步加载图片（原图来自 IndexedDB 或旧版 dataURL）
+  loadDayImages(images);
+}
+
+function loadDayImages(images) {
+  if (!images || !images.length) return;
+  images.forEach((img, i) => {
+    imageSrc(img).then(src => {
+      const el = document.querySelector(`#dd-images img[data-idx="${i}"]`);
+      if (el && src) { el.src = src; el.dataset.src = src; }
+    }).catch(() => {});
+  });
 }
 
 /* 详情页「保存当天记录」：备注 + 日历状态一起落盘 */
@@ -1289,7 +1353,8 @@ function saveDayDetail() {
   saveData();
   renderCalBar();
   renderCalendar();
-  showToast('已保存 ' + fmtDateLabel(date) + ' 的记录', 'success');
+  showToast('已保存到本地' + (ghEnabled() ? '，正在同步 GitHub…' : ''), 'success');
+  if (ghEnabled()) syncDayToGitHub(date);
 }
 
 /* 详情页导出：把当天所有已生成的数据各存一个文件（走系统分享面板） */
@@ -1320,6 +1385,9 @@ function exportDayExcel() {
       : makeXlsxBlob(sheet, headers, gen.rows, (tpl.widths || []).slice(0, headers.length));
     return { blob, filename };
   });
+
+  // 同步到 GitHub（覆盖同名文件）
+  if (ghEnabled()) out.forEach(o => exportXlsxToGithub(date.replace(/-/g, ''), o.filename, o.blob));
 
   try {
     const files = out.map(o => new File([o.blob], o.filename, { type: o.blob.type || 'application/octet-stream' }));
@@ -1663,16 +1731,15 @@ function exportCurrentExcel() {
   }
   const ws = getWs(key);
   const ext = ws.format || '.xlsx';
-  const filename = (ws.file || TEMPLATES[key].label) + '-' + todayCompact() + ext;
+  const dateC = state.selectedDate.replace(/-/g, '');
+  const filename = (ws.file || TEMPLATES[key].label) + '-' + dateC + ext;
   const safeSheet = (ws.name || TEMPLATES[key].defaultWs.name || 'Sheet1').replace(/[\\\/\?\*\[\]:]/g, '_').slice(0, 31);
   const headers = t.headers.length ? t.headers : TEMPLATES[key].headers;
   // 列宽取模板宽度（按实际列数截取）
   const widths = (TEMPLATES[key].widths || []).slice(0, headers.length);
-  if (ext === '.xls') {
-    exportToXlsHtml(headers, t.rows, filename, safeSheet);
-  } else {
-    exportToExcel(headers, t.rows, filename, safeSheet, widths);
-  }
+  const blob = ext === '.xls' ? xlsHtmlBlob(headers, t.rows, safeSheet) : makeXlsxBlob(safeSheet, headers, t.rows, widths);
+  saveBlob(blob, filename);
+  if (ghEnabled()) exportXlsxToGithub(dateC, filename, blob);
   showToast(`已生成 ${filename}`, 'success');
 }
 
@@ -1680,32 +1747,45 @@ function exportCurrentExcel() {
 async function onDayImages(input) {
   const files = Array.from(input.files || []);
   if (!files.length) return;
-  const day = ensureDay(state.dayDetailDate || state.selectedDate);
+  const date = state.dayDetailDate || state.selectedDate;
+  const day = ensureDay(date);
   day.images = day.images || [];
   let saved = 0;
   for (const f of files) {
     if (day.images.length >= 9) { showToast('每天最多 9 张图片', 'error'); break; }
     try {
-      const dataUrl = await compressImage(f, 800);
-      day.images.push(dataUrl);
+      const ext = (f.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '');
+      const safeName = date + '-' + String(day.images.length + 1).padStart(2, '0') + '.' + (ext || 'jpg');
+      const key = 'img::' + date + '::' + day.images.length;
+      await idbPutImage(key, f); // 存原图，不压缩
+      day.images.push({ key, name: safeName, type: f.type || 'image/jpeg' });
       saved++;
-    } catch (e) { console.warn('压缩失败', e); }
+    } catch (e) { console.warn('保存图片失败', e); showToast('图片保存失败', 'error'); }
   }
   saveData();
   if (state.dayDetailDate) renderDayDetail();
   renderCalBar();
   renderCalendar();
   input.value = '';
-  if (saved > 0) showToast(`已保存 ${saved} 张图片`, 'success');
+  if (saved > 0) showToast(`已保存 ${saved} 张原图`, 'success');
 }
 function removeDayImage(i) {
   const day = ensureDay(state.dayDetailDate || state.selectedDate);
+  const img = (day.images || [])[i];
+  if (!img) return;
   if (!confirm('删除这张图片？')) return;
+  if (img && img.key) idbDeleteImage(img.key).catch(() => {});
   day.images.splice(i, 1);
   saveData();
   if (state.dayDetailDate) renderDayDetail();
   renderCalBar();
   renderCalendar();
+}
+function viewImageByIndex(i) {
+  const day = state.history[state.dayDetailDate || state.selectedDate];
+  const img = (day && day.images || [])[i];
+  if (!img) return;
+  imageSrc(img).then(src => { if (src) viewImage(src); });
 }
 function viewImage(src) {
   const v = document.getElementById('imageViewer');
@@ -1718,19 +1798,45 @@ function closeImageViewer() { document.getElementById('imageViewer').style.displ
 function openDataManager() {
   const totalRows = Object.values(state.tables).reduce((s, t) => s + (t.rows ? t.rows.length : 0), 0);
   const totalDays = Object.keys(state.history).length;
+  const g = state.github || {};
   const html = `
     <div class="modal-title">数据管理 <button class="modal-close" onclick="closeModal()">×</button></div>
     <div style="font-size:13px;color:#475569;line-height:1.8">
-      当前已记录 <strong>${totalDays}</strong> 个日期，<strong>${totalRows}</strong> 行表格数据，所有数据保存在浏览器本地存储。
+      已记录 <strong>${totalDays}</strong> 个日期、<strong>${totalRows}</strong> 行数据。本地缓存 + 可同步到 GitHub 仓库（不再只存本地 JSON）。
     </div>
-    <div style="display:flex;flex-direction:column;gap:8px;margin-top:14px">
-      <button class="btn btn-primary" onclick="doExportJson()">📥 导出 JSON 备份</button>
+
+    <div class="card-title-text" style="margin:16px 0 8px;color:#6D28D9;font-weight:700">🔗 GitHub 同步</div>
+    <div style="font-size:12px;color:#64748B;line-height:1.7;background:#F5F3FF;border:1px solid #EDE9FE;border-radius:8px;padding:8px 10px;margin-bottom:10px">
+      新建一个 GitHub 仓库 → 在 Settings / Developer settings 生成 <strong>Personal access token</strong>（勾 repo 权限）→ 粘贴到下面。配置后每次「保存当天记录」会自动上传 <code>data/{日期}.json</code> 与原始图片，导出 Excel 也会覆盖上传到 <code>exports/</code>。
+    </div>
+    <div class="form-row">
+      <div class="form-field"><label>Token（仅存本机浏览器）</label><input type="password" id="gh-token" value="${escapeHtml(g.token || '')}" placeholder="ghp_..."></div>
+      <div class="form-field"><label>仓库 owner/repo</label><input type="text" id="gh-repo" value="${escapeHtml((g.owner || '') + '/' + (g.repo || ''))}" placeholder="用户名/仓库名"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-field"><label>分支</label><input type="text" id="gh-branch" value="${escapeHtml(g.branch || 'main')}" placeholder="main"></div>
+      <div class="form-field" style="justify-content:flex-end">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;height:40px">
+          <input type="checkbox" id="gh-enabled" ${g.enabled ? 'checked' : ''}> 启用同步
+        </label>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-primary btn-sm" onclick="saveGithubConfig()">保存配置</button>
+      <button class="btn btn-secondary btn-sm" onclick="syncTodayToGithub()">立即同步今天</button>
+      <button class="btn btn-secondary btn-sm" onclick="syncAllToGithub()">同步全部历史</button>
+    </div>
+    <div id="gh-status" style="font-size:12px;color:#94A3B8;margin-top:8px"></div>
+
+    <div class="card-title-text" style="margin:16px 0 8px;color:#475569;font-weight:700">💾 本地 / 备份</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button class="btn btn-secondary" onclick="doExportJson()">📥 导出 JSON 备份（含文字，不含原图）</button>
       <button class="btn btn-secondary" onclick="document.getElementById('importJsonInput').click()">📤 导入 JSON</button>
       <input type="file" id="importJsonInput" accept=".json,application/json" style="display:none" onchange="doImportJson(this)">
       <button class="btn btn-warn" onclick="doClearAll()">🗑 清空全部数据</button>
     </div>
-    <div style="font-size:12px;color:#94A3B8;margin-top:14px;line-height:1.6">
-      备份文件可在多设备之间迁移。建议每周备份一次到网盘（数据本身已经在云端链接里了）。
+    <div style="font-size:12px;color:#94A3B8;margin-top:12px;line-height:1.6">
+      原图存在浏览器 IndexedDB（不进 JSON、不压缩）。换设备请先用「导出 JSON 备份」，并在 GitHub 仓库下载图片。
     </div>
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeModal()">关闭</button>
@@ -1738,8 +1844,39 @@ function openDataManager() {
   `;
   openModal(html);
 }
+function saveGithubConfig() {
+  const repo = (document.getElementById('gh-repo').value || '').trim();
+  const m = repo.match(/^([^\/\s]+)\/([^\/\s]+)$/);
+  state.github = {
+    enabled: !!document.getElementById('gh-enabled').checked,
+    token: (document.getElementById('gh-token').value || '').trim(),
+    owner: m ? m[1] : '',
+    repo: m ? m[2] : '',
+    branch: (document.getElementById('gh-branch').value || '').trim() || 'main',
+  };
+  saveData();
+  const st = document.getElementById('gh-status');
+  if (st) st.textContent = '配置已保存' + (state.github.enabled ? '（已启用同步）' : '（未启用）');
+  showToast('GitHub 配置已保存', 'success');
+}
+function syncTodayToGithub() {
+  if (!ghEnabled()) { showToast('请先填写并启用 GitHub 配置', 'error'); return; }
+  const date = state.selectedDate;
+  const day = state.history[date];
+  if (!day || !day.generated || Object.keys(day.generated).length === 0) { showToast('今天还没有数据可同步', 'error'); return; }
+  syncDayToGitHub(date);
+}
+async function syncAllToGithub() {
+  if (!ghEnabled()) { showToast('请先填写并启用 GitHub 配置', 'error'); return; }
+  const dates = Object.keys(state.history).filter(d => state.history[d].generated && Object.keys(state.history[d].generated).length);
+  if (!dates.length) { showToast('没有历史可同步', 'error'); return; }
+  showToast('开始同步 ' + dates.length + ' 天…', 'success');
+  for (const d of dates) { try { await syncDayToGitHub(d); } catch (e) {} }
+}
 function doExportJson() {
-  const blob = new Blob(['\ufeff' + JSON.stringify(state, null, 2)], { type: 'application/json' });
+  const clone = JSON.parse(JSON.stringify(state));
+  if (clone.github) clone.github.token = ''; // 不把 token 写进备份文件
+  const blob = new Blob(['\ufeff' + JSON.stringify(clone, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -1804,6 +1941,105 @@ function showToast(msg, type) {
   toastTimer = setTimeout(() => { el.className = 'toast'; }, 2400);
 }
 
+/* ============ GitHub 同步（数据上传到仓库，覆盖旧文件） ============ */
+function ghEnabled() {
+  const g = state.github;
+  return !!(g && g.enabled && g.token && g.owner && g.repo);
+}
+function ghPath(p) { return p.split('/').map(s => encodeURIComponent(s)).join('/'); }
+
+async function ghGetSha(path) {
+  const g = state.github;
+  const url = `https://api.github.com/repos/${encodeURIComponent(g.owner)}/${encodeURIComponent(g.repo)}/contents/${ghPath(path)}?ref=${encodeURIComponent(g.branch || 'main')}`;
+  const res = await fetch(url, { headers: { 'Authorization': 'Bearer ' + g.token, 'Accept': 'application/vnd.github+json' } });
+  if (res.status === 404) return null;
+  if (!res.ok) { const t = await res.text().catch(() => ''); throw new Error('GitHub ' + res.status + (t ? ': ' + t.slice(0, 160) : '')); }
+  const j = await res.json().catch(() => ({}));
+  return j.sha || null;
+}
+async function ghUpload(path, contentB64, message) {
+  const g = state.github;
+  const url = `https://api.github.com/repos/${encodeURIComponent(g.owner)}/${encodeURIComponent(g.repo)}/contents/${ghPath(path)}`;
+  const sha = await ghGetSha(path);          // 取旧文件 sha
+  const body = { message: message || 'update', content: contentB64, branch: g.branch || 'main' };
+  if (sha) body.sha = sha;                    // 带 sha = 覆盖更新
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: { 'Authorization': 'Bearer ' + g.token, 'Content-Type': 'application/json', 'Accept': 'application/vnd.github+json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) { const t = await res.text().catch(() => ''); throw new Error('GitHub ' + res.status + (t ? ': ' + t.slice(0, 160) : '')); }
+  return true;
+}
+async function syncDayToGitHub(date) {
+  const day = state.history[date];
+  if (!day) return;
+  try {
+    // 记录 JSON（图片只存文件名引用，不存字节）
+    const rec = {
+      date,
+      notes: day.notes || '',
+      images: (day.images || []).map(img => ({ name: img && img.name, type: img && img.type })),
+      generated: day.generated || {},
+    };
+    await ghUpload(`data/${date}.json`, utf8ToBase64(JSON.stringify(rec, null, 2)), `记录 ${date}`);
+    // 原图逐张上传（不压缩）
+    for (const img of (day.images || [])) {
+      if (!img || !img.key) continue;
+      const blob = await idbGetImage(img.key);
+      if (blob) await ghUpload(`images/${date}/${img.name}`, await blobToBase64(blob), `图片 ${date}/${img.name}`);
+    }
+    showToast('已同步到 GitHub ✅', 'success');
+  } catch (e) {
+    console.warn(e);
+    showToast('GitHub 同步失败：' + (e.message || e), 'error');
+  }
+}
+async function exportXlsxToGithub(date, filename, blob) {
+  if (!ghEnabled()) return false;
+  try {
+    await ghUpload(`exports/${date}/${filename}`, await blobToBase64(blob), `导出 ${filename}`);
+    return true;
+  } catch (e) {
+    console.warn(e);
+    showToast('导出文件同步 GitHub 失败：' + (e.message || e), 'error');
+    return false;
+  }
+}
+
+/* ============ 新一天沿用前一天数据 ============ */
+function adjustDatesToToday(key, rows) {
+  const today = todayStr();
+  const todayC = todayCompact();
+  let col = null;
+  if (key === 'passage') col = 3;
+  else if (key === 'infection') col = 1;
+  else if (key === 'submission') col = 4;
+  else if (key === 'harvest') col = 1;
+  if (col == null) return;
+  rows.forEach(r => { if (col < r.length) r[col] = (key === 'harvest') ? todayC : today; });
+}
+function prefillTodayFromYesterday() {
+  const today = todayStr();
+  if (state.history[today]) return; // 今天已有记录，不覆盖
+  const y = new Date(); y.setDate(y.getDate() - 1);
+  const yStr = y.getFullYear() + '-' + String(y.getMonth() + 1).padStart(2, '0') + '-' + String(y.getDate()).padStart(2, '0');
+  const yday = state.history[yStr];
+  if (!yday || !yday.generated || Object.keys(yday.generated).length === 0) return;
+  const day = ensureDay(today);
+  Object.keys(yday.generated).forEach(key => {
+    const gen = yday.generated[key];
+    if (!gen || !gen.rows || gen.rows.length === 0) return;
+    const rows = gen.rows.map(r => r.slice());
+    adjustDatesToToday(key, rows); // 日期列改成今天
+    day.generated[key] = { headers: gen.headers.slice(), rows };
+  });
+  // 当前模板表格载入今天的数据
+  const hist = getCurrentHistoryTable();
+  if (hist) state.tables[state.selectedTemplate] = { headers: hist.headers.slice(), rows: hist.rows.map(r => r.slice()) };
+  saveData();
+}
+
 /* ============ 初始化 ============ */
 function init() {
   state = loadState();
@@ -1831,6 +2067,8 @@ function init() {
       saveData();
     });
   });
+  // 新的一天：若今天无记录但昨天有，自动把昨天数据按今天日期预填进来（只需小改）
+  prefillTodayFromYesterday();
   // 首次打开：当前模板 + 当前日期若无历史数据，自动按参数生成
   const t0 = state.tables[state.selectedTemplate];
   if ((!t0 || (t0.rows || []).length === 0) && !getCurrentHistoryTable()) {
