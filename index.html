@@ -1,0 +1,1849 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#7C3AED">
+<title>实验室工作台</title>
+<style>
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Roboto,sans-serif;
+  background:#F5F3FF;
+  color:#0F172A;
+  font-size:15px;
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+  -webkit-tap-highlight-color:transparent;
+  padding-bottom:88px;
+}
+button{font-family:inherit;cursor:pointer}
+input,textarea,select{font-family:inherit;font-size:16px}
+a{color:inherit;text-decoration:none}
+
+/* ============ 顶部 ============ */
+.top-bar{
+  background:linear-gradient(135deg,#7C3AED 0%,#3B82F6 100%);
+  color:#fff;
+  padding:14px 20px;
+  padding-top:max(14px,env(safe-area-inset-top));
+  display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:100;
+  box-shadow:0 2px 12px rgba(124,58,237,0.18);
+}
+.top-bar-title{font-size:17px;font-weight:600;display:flex;align-items:center;gap:8px}
+.top-bar-actions{display:flex;align-items:center;gap:8px}
+.top-icon-btn{
+  background:rgba(255,255,255,0.18);
+  border:none;color:#fff;
+  width:36px;height:36px;border-radius:10px;
+  display:inline-flex;align-items:center;justify-content:center;
+  cursor:pointer;
+}
+.top-icon-btn:active{background:rgba(255,255,255,0.3)}
+
+/* ============ 主布局 ============ */
+.main{max-width:780px;margin:0 auto;padding:14px}
+
+/* ============ 卡片 ============ */
+.card{
+  background:#fff;
+  border-radius:14px;
+  padding:16px;
+  margin-bottom:12px;
+  box-shadow:0 1px 3px rgba(15,23,42,0.06);
+}
+.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.card-title{font-size:16px;font-weight:600;display:flex;align-items:center;gap:8px;color:#1E293B}
+.card-title-bar{
+  display:inline-block;width:3px;height:16px;border-radius:2px;
+  background:linear-gradient(180deg,#7C3AED,#3B82F6);
+  margin-right:2px;
+}
+.card-title-text{font-weight:600;font-size:15px;color:#1E293B}
+
+/* ============ 模板卡片网格 ============ */
+.tpl-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+  gap:10px;
+}
+.tpl-card{
+  border:2px solid #E2E8F0;
+  border-radius:12px;
+  padding:14px 12px;
+  cursor:pointer;
+  transition:all 0.15s;
+  background:#fff;
+  position:relative;
+  min-height:90px;
+}
+.tpl-card:active{transform:scale(0.98)}
+.tpl-card.selected{border-color:#7C3AED;background:#F5F3FF;box-shadow:0 4px 12px rgba(124,58,237,0.18)}
+.tpl-card.selected::after{
+  content:'✓';
+  position:absolute;top:6px;right:8px;
+  width:18px;height:18px;border-radius:50%;
+  background:#7C3AED;color:#fff;
+  font-size:12px;line-height:18px;text-align:center;
+}
+.tpl-icon{width:30px;height:30px;margin-bottom:8px;color:#7C3AED}
+.tpl-name{font-size:14px;font-weight:600;margin-bottom:3px;color:#1E293B}
+.tpl-desc{font-size:11px;color:#64748B}
+
+/* ============ 表单 ============ */
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.form-row.cols-3{grid-template-columns:1fr 1fr 1fr}
+.form-row.single{grid-template-columns:1fr}
+.form-field{display:flex;flex-direction:column;gap:4px}
+.form-field label{font-size:12px;color:#64748B;font-weight:500}
+.form-field input,
+.form-field select,
+.form-field textarea{
+  border:1px solid #E2E8F0;
+  border-radius:8px;
+  padding:9px 10px;
+  background:#fff;
+  font-size:14px;
+  outline:none;
+  transition:border-color 0.15s,box-shadow 0.15s;
+  width:100%;
+}
+.form-field input:focus,
+.form-field select:focus,
+.form-field textarea:focus{
+  border-color:#7C3AED;
+  box-shadow:0 0 0 3px rgba(124,58,237,0.12);
+}
+.form-field textarea{resize:vertical;min-height:60px}
+
+/* ============ 按钮 ============ */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  padding:10px 16px;border-radius:10px;border:none;
+  font-size:14px;font-weight:500;
+  cursor:pointer;transition:all 0.15s;
+  min-height:40px;
+}
+.btn:active{transform:scale(0.98)}
+.btn-primary{background:linear-gradient(135deg,#7C3AED,#3B82F6);color:#fff;box-shadow:0 4px 12px rgba(124,58,237,0.25)}
+.btn-secondary{background:#F1F5F9;color:#1E293B}
+.btn-warn{background:#FEE2E2;color:#DC2626}
+.btn-sm{padding:7px 12px;font-size:13px;min-height:34px;border-radius:8px}
+
+/* ============ 项目行（送检用） ============ */
+.item-row{display:grid;grid-template-columns:2fr 1fr auto;gap:8px;margin-bottom:8px;align-items:flex-end}
+.item-row .form-field{margin:0}
+
+/* ============ 数据表格 ============ */
+.table-wrap{overflow-x:auto;border:1px solid #E2E8F0;border-radius:10px;background:#fff}
+.data-table{border-collapse:collapse;width:100%;font-size:13px}
+.data-table th,.data-table td{
+  border-right:1px solid #E2E8F0;
+  border-bottom:1px solid #E2E8F0;
+  padding:0;
+  vertical-align:middle;
+  text-align:center;
+  min-width:80px;
+}
+.data-table th:last-child,.data-table td:last-child{border-right:none}
+.data-table tr:last-child td{border-bottom:none}
+.data-table th{
+  background:linear-gradient(180deg,#7C3AED,#6D28D9);
+  color:#fff;
+  font-weight:600;
+  position:relative;
+  height:36px;
+}
+.th-input{background:transparent;border:none;color:#fff;font-weight:600;padding:6px 22px 6px 8px;width:100%;text-align:center;font-size:13px;outline:none}
+.th-input::placeholder{color:rgba(255,255,255,0.6)}
+.th-del{
+  position:absolute;right:4px;top:50%;transform:translateY(-50%);
+  background:rgba(255,255,255,0.18);border:none;color:#fff;
+  width:18px;height:18px;border-radius:4px;cursor:pointer;font-size:11px;line-height:1;
+}
+.th-del:hover{background:rgba(255,255,255,0.35)}
+.td-input{width:100%;height:34px;border:none;padding:6px 8px;background:transparent;outline:none;font-size:13px;text-align:center}
+.td-input:focus{background:#F5F3FF;box-shadow:inset 0 0 0 2px #7C3AED}
+
+/* ============ 工具栏（在表格上方） ============ */
+.toolbar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;align-items:center}
+.toolbar .spacer{flex:1}
+.toolbar .badge{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:4px 10px;border-radius:8px;
+  background:#EDE9FE;color:#7C3AED;
+  font-size:12px;font-weight:500;
+}
+
+/* ============ 数据统计 ============ */
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat-box{
+  border:1px solid #E2E8F0;border-radius:10px;padding:12px;
+}
+.stat-box .label{font-size:12px;color:#64748B;margin-bottom:4px}
+.stat-box .value{font-size:24px;font-weight:700;line-height:1.2}
+.stat-box.s-primary{background:#EDE9FE;color:#7C3AED}
+.stat-box.s-success{background:#DCFCE7;color:#16A34A}
+.stat-box.s-warn{background:#FEF3C7;color:#D97706}
+.stat-box.s-info{background:#DBEAFE;color:#2563EB}
+
+.params-hint{
+  margin-top:8px;font-size:11.5px;line-height:1.6;color:#7C6BA8;
+  background:#F5F3FF;border:1px solid #EDE9FE;border-radius:8px;padding:6px 9px;
+}
+
+/* ============ 迷你日历 ============ */
+.cal-mini{
+  display:grid;
+  /* minmax(0,1fr) 保证窄屏下每列等宽且不被内容撑破 */
+  grid-template-columns:repeat(7,minmax(0,1fr));
+  gap:4px;font-size:12px;width:100%;
+  box-sizing:border-box;
+}
+.cal-mini > *{min-width:0}
+.cal-dow{
+  text-align:center;color:#94A3B8;font-weight:600;
+  padding:5px 0;height:22px;line-height:22px;
+  font-size:11px;min-width:0;overflow:hidden;
+}
+/* 固定高度，不依赖 aspect-ratio（兼容旧版 iOS Safari） */
+.cal-cell{
+  height:38px;min-height:38px;border-radius:8px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:#FAFAFB;border:1px solid #F1F5F9;
+  cursor:pointer;font-size:13px;min-width:0;overflow:hidden;
+  position:relative;gap:2px;padding:0;
+  box-sizing:border-box;
+  -webkit-tap-highlight-color:transparent;
+  transition:all 0.12s;
+}
+.cal-cell:not(.empty):not(.today):active{background:#EDE9FE}
+@media (max-width:360px){
+  .cal-mini{gap:3px}
+  .cal-cell{height:34px;min-height:34px;font-size:12px}
+}
+.cal-cell.empty{visibility:hidden;background:transparent;border-color:transparent}
+.cal-cell.today{background:#7C3AED;color:#fff;font-weight:600}
+.cal-cell.selected{outline:2px solid #7C3AED;outline-offset:-1px;background:#EDE9FE;color:#7C3AED;font-weight:600}
+.cal-cell:not(.empty):not(.today):hover{background:#F1F5F9}
+.cal-cell.has-data::after{
+  content:'';position:absolute;bottom:4px;
+  width:5px;height:5px;border-radius:50%;background:#7C3AED;
+}
+.cal-cell.today.has-data::after{background:#fff}
+
+/* ============ 紧凑日期条 + 折叠日历 ============ */
+.cal-card{padding:0;overflow:hidden}
+.date-bar{
+  display:flex;align-items:center;gap:8px;
+  padding:11px 14px;cursor:pointer;user-select:none;
+}
+.date-bar:active{background:#F8FAFC}
+.db-icon{font-size:16px}
+.db-label{font-size:14px;font-weight:600;color:#1E293B}
+.db-sub{font-size:12px;color:#6D28D9;background:#EDE9FE;border-radius:10px;padding:2px 9px}
+.db-sub:empty{display:none}
+.db-arrow{margin-left:auto;font-size:12px;color:#94A3B8;transition:transform 0.18s}
+.db-arrow.open{transform:rotate(180deg)}
+
+/* ============ 当天详情页（浮层） ============ */
+.dd-overlay{
+  display:none;position:fixed;inset:0;z-index:250;
+  background:rgba(15,23,42,0.45);
+  align-items:flex-end;justify-content:center;
+}
+.dd-overlay.open{display:flex}
+.dd-page{
+  background:#fff;width:100%;max-width:560px;
+  height:92vh;border-radius:16px 16px 0 0;
+  display:flex;flex-direction:column;overflow:hidden;
+  animation:ddSlideUp 0.22s ease;
+}
+@keyframes ddSlideUp{from{transform:translateY(40px);opacity:0.6}to{transform:translateY(0);opacity:1}}
+@media (min-width:640px){
+  .dd-overlay{align-items:center}
+  .dd-page{height:84vh;border-radius:16px}
+}
+.dd-header{
+  display:flex;align-items:center;gap:8px;flex-shrink:0;
+  padding:12px 14px;border-bottom:1px solid #F1F5F9;
+}
+.dd-close{
+  border:none;background:#F1F5F9;color:#334155;
+  border-radius:8px;padding:7px 12px;font-size:13px;font-weight:600;cursor:pointer;
+}
+.dd-title{font-size:15px;font-weight:700;color:#1E293B;flex:1;text-align:center}
+.dd-nav{display:flex;gap:6px}
+.dd-nav-btn{
+  width:30px;height:30px;border:1px solid #E2E8F0;background:#fff;
+  border-radius:8px;cursor:pointer;font-size:15px;color:#475569;
+}
+.dd-body{flex:1;overflow-y:auto;padding:14px;-webkit-overflow-scrolling:touch}
+.dd-section{margin-bottom:16px}
+.dd-section-title{
+  font-size:13px;font-weight:700;color:#6D28D9;
+  display:flex;align-items:center;gap:6px;margin-bottom:8px;
+}
+.dd-summary{border:1px solid #EDE9FE;background:#FAF9FF;border-radius:12px;padding:4px 6px}
+.dd-note{
+  width:100%;border:1px solid #E2E8F0;border-radius:10px;
+  padding:10px 12px;font-size:13px;line-height:1.7;color:#1E293B;
+  resize:vertical;min-height:72px;outline:none;font-family:inherit;
+  box-sizing:border-box;
+}
+.dd-note:focus{border-color:#A78BFA}
+.dd-photo-bar{display:flex;align-items:center;gap:8px;margin-top:8px}
+.dd-photo-count{font-size:12px;color:#94A3B8}
+
+/* ---- 当天完成的数据（小表格）---- */
+.dd-tpl-block{
+  border:1px solid #EDE9FE;background:#FAF9FF;
+  border-radius:12px;margin-bottom:10px;overflow:hidden;
+}
+.dd-tpl-head{
+  display:flex;align-items:center;gap:8px;
+  padding:9px 12px;cursor:pointer;user-select:none;
+}
+.dd-tpl-head:active{background:#F1EDFF}
+.dd-tpl-label{font-size:13px;font-weight:700;color:#6D28D9}
+.dd-view-link{margin-left:auto;font-size:12px;color:#7C3AED;flex-shrink:0}
+.dd-mini-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border-top:1px solid #F1EBFF}
+.dd-mini-table{
+  border-collapse:collapse;font-size:11px;width:100%;
+  white-space:nowrap;background:#fff;
+}
+.dd-mini-table th{
+  background:#F5F3FF;color:#6D28D9;font-weight:600;
+  padding:5px 8px;text-align:center;border-right:1px solid #E9E4FF;
+}
+.dd-mini-table td{
+  padding:5px 8px;text-align:center;color:#334155;
+  border-top:1px solid #F1F5F9;border-right:1px solid #F1F5F9;
+}
+.dd-mini-table tr:last-child td{border-bottom:none}
+.dd-empty{
+  text-align:center;color:#94A3B8;font-size:12px;
+  padding:18px 10px;background:#FAFAFB;border-radius:10px;
+  border:1px dashed #E2E8F0;
+}
+
+/* ---- 底部保存栏 ---- */
+.dd-footer{
+  flex-shrink:0;padding:10px 14px;
+  padding-bottom:max(10px,env(safe-area-inset-bottom));
+  border-top:1px solid #F1F5F9;background:#fff;
+  display:flex;gap:8px;align-items:center;
+}
+.dd-save-main{
+  flex:1;border:none;border-radius:12px;padding:12px;
+  font-size:15px;font-weight:700;color:#fff;cursor:pointer;
+  background:linear-gradient(135deg,#7C3AED 0%,#3B82F6 100%);
+}
+.dd-save-main:active{opacity:0.85}
+.dd-save-extra{
+  border:1px solid #DDD6FE;background:#F5F3FF;color:#6D28D9;
+  border-radius:12px;padding:12px 14px;font-size:14px;font-weight:600;cursor:pointer;
+}
+.dd-save-extra:active{background:#EDE9FE}
+.dd-saved-tip{font-size:11px;color:#94A3B8;text-align:center;margin-top:6px}
+.dd-images{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}
+.dd-img{position:relative;border-radius:10px;overflow:hidden;aspect-ratio:1;background:#F1F5F9}
+.dd-img img{width:100%;height:100%;object-fit:cover;display:block;cursor:pointer}
+.dd-img .del-img{
+  position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;
+  background:rgba(0,0,0,0.55);color:#fff;border:none;font-size:12px;line-height:1;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+}
+
+/* ============ 当日完成情况（详情页内） ============ */
+.day-summary{
+  margin-top:10px;border:1px solid #EDE9FE;background:#FAF9FF;
+  border-radius:10px;padding:10px 12px;
+}
+.day-summary-header{
+  display:flex;justify-content:space-between;align-items:center;
+  font-size:13px;font-weight:600;color:#6D28D9;margin-bottom:8px;
+}
+.day-summary-item{
+  display:flex;align-items:flex-start;gap:8px;padding:6px 8px;
+  border-radius:8px;cursor:pointer;transition:background 0.12s;
+}
+.day-summary-item:hover{background:#EDE9FE}
+.day-summary-item .dsi-label{
+  flex-shrink:0;font-size:12px;font-weight:600;color:#7C3AED;
+  background:#EDE9FE;border-radius:6px;padding:2px 8px;margin-top:1px;
+}
+.day-summary-item .dsi-content{font-size:12px;color:#475569;line-height:1.7;word-break:break-all}
+.day-summary-empty{font-size:12px;color:#94A3B8;padding:4px 8px}
+.day-note-indicator{
+  display:inline-flex;align-items:center;gap:4px;margin-top:6px;
+  font-size:12px;color:#6D28D9;background:#EDE9FE;
+  border-radius:6px;padding:2px 8px;
+}
+
+/* ============ 使用说明 ============ */
+.tips{font-size:13px;color:#475569;line-height:1.8}
+.tips ol{padding-left:20px;margin:0}
+.tips li{margin-bottom:4px}
+.tips li::marker{color:#7C3AED;font-weight:600}
+
+/* ============ 悬浮下载 FAB ============ */
+.fab{
+  position:fixed;
+  right:18px;bottom:24px;
+  width:56px;height:56px;border-radius:50%;
+  background:linear-gradient(135deg,#7C3AED,#3B82F6);
+  color:#fff;border:none;font-size:24px;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 8px 20px rgba(124,58,237,0.45);
+  cursor:pointer;z-index:50;
+  transition:transform 0.15s,box-shadow 0.15s;
+}
+.fab:active{transform:scale(0.94)}
+.fab-label{
+  position:absolute;right:64px;top:50%;transform:translateY(-50%);
+  background:rgba(15,23,42,0.85);color:#fff;
+  padding:6px 12px;border-radius:8px;font-size:12px;white-space:nowrap;
+  opacity:0;transition:opacity 0.15s;pointer-events:none;
+}
+.fab:hover .fab-label{opacity:1}
+
+/* ============ 模态框 ============ */
+.modal-overlay{
+  position:fixed;inset:0;
+  background:rgba(15,23,42,0.55);
+  display:none;align-items:center;justify-content:center;
+  z-index:200;padding:16px;
+}
+.modal-overlay.open{display:flex}
+.modal{
+  background:#fff;border-radius:14px;padding:18px;max-width:520px;width:100%;
+  max-height:85vh;overflow-y:auto;
+}
+.modal-title{font-size:16px;font-weight:600;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center}
+.modal-close{background:none;border:none;font-size:22px;color:#94A3B8;cursor:pointer;line-height:1;padding:0}
+.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
+
+/* ============ Toast ============ */
+.toast{
+  position:fixed;left:50%;top:80px;
+  transform:translateX(-50%) translateY(-10px);
+  background:rgba(15,23,42,0.92);color:#fff;
+  padding:10px 18px;border-radius:10px;font-size:13px;
+  opacity:0;transition:all 0.2s;z-index:300;pointer-events:none;
+  max-width:88vw;text-align:center;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.success{background:rgba(22,163,74,0.92)}
+.toast.error{background:rgba(220,38,38,0.92)}
+
+/* ============ Empty state ============ */
+.empty{
+  text-align:center;padding:32px 16px;color:#94A3B8;font-size:14px;
+}
+
+/* ============ 移动端适配 ============ */
+@media (max-width:640px){
+  body{font-size:14px}
+  .main{padding:10px}
+  .card{padding:14px;border-radius:12px}
+  .card-title-text{font-size:14px}
+  .form-row{grid-template-columns:1fr 1fr;gap:8px}
+  .form-row.cols-3{grid-template-columns:1fr 1fr}
+  .tpl-grid{grid-template-columns:1fr 1fr}
+  .data-table{font-size:12px}
+}
+@media (max-width:380px){
+  .form-row{grid-template-columns:1fr}
+  .stats-grid{grid-template-columns:1fr}
+}
+
+/* ============ 头像颜色 ============ */
+.dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:#7C3AED}
+.row-action{display:inline-flex;align-items:center;gap:4px}
+</style>
+</head>
+<body>
+<!-- ============ 顶部 ============ -->
+<div class="top-bar">
+  <div class="top-bar-title">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    个人工作台
+  </div>
+  <div class="top-bar-actions">
+    <button class="top-icon-btn" onclick="openDataManager()" title="数据管理">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>
+  </div>
+</div>
+
+<main class="main">
+
+  <!-- ====== 选择模板 ====== -->
+  <section class="card">
+    <div class="card-header">
+      <div class="card-title"><span class="card-title-bar"></span><span class="card-title-text">选择模板</span></div>
+    </div>
+    <div id="tpl-grid" class="tpl-grid"></div>
+  </section>
+
+  <!-- ====== 工作表设置 ====== -->
+  <section class="card">
+    <div class="card-header">
+      <div class="card-title"><span class="card-title-bar"></span><span class="card-title-text">工作表设置</span></div>
+    </div>
+    <div class="form-row">
+      <div class="form-field">
+        <label>工作表名称</label>
+        <input type="text" id="ws-name" placeholder="如：送检记录">
+      </div>
+      <div class="form-field">
+        <label>文件名</label>
+        <input type="text" id="ws-file" placeholder="如：样品送检记录表">
+      </div>
+    </div>
+    <div class="form-row single">
+      <div class="form-field">
+        <label>格式</label>
+        <select id="ws-format">
+          <option value=".xlsx">.xlsx（推荐）</option>
+          <option value=".xls">.xls（Excel 旧版）</option>
+        </select>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====== 模板参数 ====== -->
+  <section class="card">
+    <div class="card-header">
+      <div class="card-title">
+        <span class="card-title-bar"></span>
+        <span class="card-title-text" id="params-title">模板参数</span>
+        <span style="font-size:12px;color:#94A3B8;font-weight:normal">（选模板即自动生成，改参数后点「重新生成」）</span>
+      </div>
+      <button class="btn btn-primary btn-sm" id="regen-btn" onclick="regenerate()">🔄 重新生成</button>
+    </div>
+    <div id="params-form"></div>
+  </section>
+
+  <!-- ====== 日期与日历（紧凑） ====== -->
+  <section class="card cal-card">
+    <div class="date-bar" onclick="toggleCal(event)">
+      <span class="db-icon">📅</span>
+      <span class="db-label" id="cal-bar-label">今天</span>
+      <span class="db-sub" id="cal-bar-sub"></span>
+      <span class="db-arrow" id="cal-arrow">▾</span>
+    </div>
+    <div id="cal-wrap" style="display:none;padding:12px 12px 10px">
+      <div style="display:flex;justify-content:flex-end;margin-bottom:6px;gap:8px;align-items:center">
+        <input type="date" id="select-date" style="border:1px solid #E2E8F0;border-radius:8px;padding:5px 8px;font-size:12px">
+      </div>
+      <div id="calendar-mini" class="cal-mini"></div>
+      <div style="font-size:11px;color:#94A3B8;margin-top:6px;text-align:center">点击日期 → 查看当日完成情况 / 写备注 / 传照片</div>
+    </div>
+  </section>
+
+  <!-- ====== 数据表格 ====== -->
+  <section class="card">
+    <div class="card-header">
+      <div class="card-title"><span class="card-title-bar"></span><span class="card-title-text">📊 数据表格</span></div>
+      <div id="row-count-badge" class="badge"><span class="dot"></span><span id="row-count-text">0 行</span></div>
+    </div>
+    <div class="toolbar">
+      <button class="btn btn-secondary btn-sm" onclick="addRow()">+ 添加行</button>
+      <button class="btn btn-secondary btn-sm" onclick="addCol()">+ 添加列</button>
+      <span class="spacer"></span>
+      <button class="btn btn-warn btn-sm" onclick="clearTable()">清空</button>
+    </div>
+    <div class="table-wrap">
+      <table class="data-table" id="data-table"></table>
+    </div>
+    <div style="font-size:12px;color:#94A3B8;margin-top:8px">💡 直接点击单元格即可编辑内容；表头列名也可直接修改</div>
+  </section>
+
+  <!-- ====== 数据统计 ====== -->
+  <section class="card">
+    <div class="card-header">
+      <div class="card-title"><span class="card-title-bar"></span><span class="card-title-text">📈 数据统计</span></div>
+    </div>
+    <div class="stats-grid" id="stats-grid"></div>
+    <div style="font-size:12px;color:#94A3B8;margin-top:8px" id="stats-hint"></div>
+  </section>
+
+  <!-- ====== 使用说明 ====== -->
+  <section class="card">
+    <div class="card-header">
+      <div class="card-title"><span class="card-title-bar"></span><span class="card-title-text">📖 使用说明</span></div>
+    </div>
+    <div class="tips">
+      <ol>
+        <li>选择上方模板：传代 / 接毒 / 送检 / 编号</li>
+        <li>选择模板后自动按参数生成数据（日期自动取当天）；改完参数点「重新生成」刷新表格，所有参数自动保存</li>
+        <li>点击表格单元格直接编辑内容，表头可修改列名</li>
+        <li>点击「添加行/列」扩展表格，点击「清空」重置</li>
+        <li>点击「📅 日期条」展开/收起日历；点击日期打开<strong>当天详情页</strong>：直接看到当天传代/接毒/编号/送检的明细小表格，可写备注、传照片，<strong>点底部「💾 保存当天记录」保存</strong>（左右箭头切前后天）</li>
+        <li>带紫点的日期表示有记录；点详情页里某块数据的「查看/编辑 →」会跳到该模板的表格继续编辑</li>
+        <li>数据自动保存在浏览器本地，刷新不丢失；右上「⚙ 数据」可备份 / 导入 JSON</li>
+        <li>导出 Excel：右下紫色「↓」按钮导出<strong>当前表格</strong>；详情页底部「导出 Excel」导出<strong>当天全部</strong>数据</li>
+        <li>导出时会弹出系统分享面板 → 选「<strong>存储到"文件"</strong>」即可存进手机文件 App 的任意文件夹（电脑端不支持分享时自动改为下载）</li>
+      </ol>
+    </div>
+  </section>
+
+</main>
+
+<!-- FAB 下载按钮 -->
+<button class="fab" onclick="exportCurrentExcel()" title="导出 Excel">
+  ↓
+  <span class="fab-label">导出 Excel</span>
+</button>
+
+<!-- 当天详情页（点日历日期打开） -->
+<div class="dd-overlay" id="dayDetailOverlay" onclick="if(event.target===this)closeDayDetail()">
+  <div class="dd-page" id="dayDetailBox">
+    <div class="dd-header">
+      <button class="dd-close" onclick="closeDayDetail()">‹ 返回</button>
+      <div class="dd-title" id="dd-title"></div>
+      <div class="dd-nav">
+        <button class="dd-nav-btn" onclick="ddNav(-1)">‹</button>
+        <button class="dd-nav-btn" onclick="ddNav(1)">›</button>
+      </div>
+    </div>
+    <div class="dd-body" id="dd-body"></div>
+    <div class="dd-footer">
+      <button class="dd-save-main" onclick="saveDayDetail()">💾 保存当天记录</button>
+      <button class="dd-save-extra" onclick="exportDayExcel()">导出 Excel</button>
+    </div>
+  </div>
+</div>
+
+<!-- 模态框 -->
+<div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal" id="modalBox"></div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- 图片查看器 -->
+<div id="imageViewer" onclick="if(event.target===this)closeImageViewer()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:300;align-items:center;justify-content:center;cursor:zoom-out">
+  <img id="imageViewerImg" style="max-width:94vw;max-height:92vh;border-radius:6px">
+</div>
+
+<script>
+/* ==========================================================================
+   常量与状态
+   ========================================================================== */
+const STORAGE_KEY = 'wb_lab_v3';
+const DEFAULT_OPERATOR = '梁栋茂';
+
+/* headers / widths / sheet 名与用户提供的 4 个 xlsx 模板逐字对齐 */
+const TEMPLATES = {
+  passage: {
+    label: '传代模板', desc: '细胞传代记录',
+    icon: '<path d="M3 3h18v18H3z"/><path d="M3 9h18M9 21V9"/>',
+    headers: ['细胞系', '细胞代次', '批号', '日期', '操作人'],
+    widths: [12.8, 10.8, 14.8, 12.8, 11.8],
+    qtyCol: null,
+    defaultParams: () => ({ 细胞系: 'Mare-145', 细胞代次: 'P7', 批号: '', 日期: todayStr(), 组数: '', 每组分数: '', 操作人: DEFAULT_OPERATOR }),
+    defaultWs: { name: '传代记录', file: '细胞传代记录表', format: '.xlsx' },
+  },
+  infection: {
+    label: '接毒模板', desc: '病毒接种记录',
+    icon: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>',
+    headers: ['毒株名称', '操作日期', '操作人', '种毒批号', '种毒加量', '种毒效价'],
+    widths: [11.8, 12.8, 10.8, 17.8, 10.8, 10.8],
+    qtyCol: null,
+    defaultParams: () => ({ 毒株名称: 'C42-M18', 操作日期: todayStr(), 操作人: DEFAULT_OPERATOR, 种毒批号: '', 种毒加量: '', 种毒效价: '', 样本数量: '' }),
+    defaultWs: { name: '接毒记录', file: '病毒接种记录表', format: '.xlsx' },
+  },
+  submission: {
+    label: '送检模板', desc: '样品送检登记',
+    icon: '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h8M8 15h5"/>',
+    headers: ['送样单号', '送检人', '送检项目', '样品数量', '收毒日期'],
+    widths: [13.8, 10.8, 10.8, 10.8, 12.8],
+    qtyCol: 3,
+    defaultParams: () => ({
+      送样单号: 'XH' + todayCompact(), 送检人: DEFAULT_OPERATOR, 收毒日期: todayStr(),
+      items: [{ 项目: '菌检', 数量: 10 }, { 项目: '毒价rv', 数量: 1 }, { 项目: 'PCR', 数量: 1 }]
+    }),
+    defaultWs: { name: '送检记录', file: '样品送检记录表', format: '.xlsx' },
+  },
+  harvest: {
+    label: '编号模板', desc: '样品编号生成',
+    icon: '<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6M9 13h6M9 17h4"/>',
+    headers: ['名称', 'id', 'id'],
+    widths: [21.8, 18.8, 18.8],
+    qtyCol: null,
+    defaultParams: () => ({ 名称前缀: 'RV-' + DEFAULT_OPERATOR, 日期: todayCompact(), 数量: 19, 起始ID: '' }),
+    defaultWs: { name: '编号记录', file: '样品编号记录表', format: '.xlsx' },
+  },
+};
+
+let state = null;
+
+/* ==========================================================================
+   工具函数
+   ========================================================================== */
+function todayStr() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function todayCompact() { return todayStr().replace(/-/g,''); }
+function uid() { return Math.random().toString(36).slice(2,10); }
+function escapeHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function fmtMonthLabel(d) {
+  return d.getFullYear() + ' 年 ' + (d.getMonth()+1) + ' 月';
+}
+function isValidDate(s) { return /^\d{4}-\d{2}-\d{2}$/.test(s); }
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') return parsed;
+    }
+  } catch (e) { console.warn('loadState failed', e); }
+  return defaultState();
+}
+
+function defaultState() {
+  return {
+    selectedTemplate: 'submission',
+    selectedDate: todayStr(),
+    selectedCalMonth: (function(){ const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0'); })(),
+    workSettingsByTpl: {},
+    paramsByTpl: {},
+    tables: { passage: { headers: [], rows: [] }, infection: { headers: [], rows: [] }, submission: { headers: [], rows: [] }, harvest: { headers: [], rows: [] } },
+    history: {}, // { '2026-08-29': { notes, images, generated: { passage:{headers,rows}, ... } } }
+    settings: { defaultOperator: DEFAULT_OPERATOR },
+  };
+}
+
+function saveData() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch (e) {
+    if (e && e.name === 'QuotaExceededError') {
+      showToast('存储已满，请清理后重试', 'error');
+    } else {
+      showToast('保存失败：' + (e && e.message || '未知错误'), 'error');
+    }
+  }
+}
+
+function getWs(key) {
+  if (!state.workSettingsByTpl[key]) state.workSettingsByTpl[key] = { ...TEMPLATES[key].defaultWs };
+  return state.workSettingsByTpl[key];
+}
+function getParams(key) {
+  if (!state.paramsByTpl[key]) state.paramsByTpl[key] = TEMPLATES[key].defaultParams();
+  return state.paramsByTpl[key];
+}
+function getCurrentTable() {
+  return state.tables[state.selectedTemplate];
+}
+// 获取当前模板当前日期的原始生成数据（如有）
+function getCurrentHistoryTable(date) {
+  date = date || state.selectedDate;
+  const day = state.history[date];
+  if (!day) return null;
+  return day.generated && day.generated[state.selectedTemplate] ? day.generated[state.selectedTemplate] : null;
+}
+function ensureDay(date) {
+  if (!state.history[date]) state.history[date] = { notes: '', images: [], generated: {} };
+  return state.history[date];
+}
+
+/* ==========================================================================
+   Excel 导出：真实 .xlsx（与用户模板格式一致）+ .xls HTML 兜底
+   ========================================================================== */
+/* ---- 最小 ZIP 写入器（STORE 不压缩）---- */
+const CRC_TABLE = (function(){
+  const t = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+    t[n] = c >>> 0;
+  }
+  return t;
+})();
+function crc32(bytes) {
+  let c = 0xFFFFFFFF;
+  for (let i = 0; i < bytes.length; i++) c = CRC_TABLE[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8);
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+function makeZip(files) {
+  const chunks = [], central = [];
+  let offset = 0;
+  const enc = new TextEncoder();
+  files.forEach(f => {
+    const nameBytes = enc.encode(f.name);
+    const crc = crc32(f.data);
+    const local = new Uint8Array(30 + nameBytes.length);
+    const dv = new DataView(local.buffer);
+    dv.setUint32(0, 0x04034b50, true);
+    dv.setUint16(4, 20, true);
+    dv.setUint16(6, 0x0800, true);   // UTF-8 文件名
+    dv.setUint16(8, 0, true);        // method: STORE
+    dv.setUint16(10, 0, true); dv.setUint16(12, 0x21, true);
+    dv.setUint32(14, crc, true);
+    dv.setUint32(18, f.data.length, true);
+    dv.setUint32(22, f.data.length, true);
+    dv.setUint16(26, nameBytes.length, true);
+    dv.setUint16(28, 0, true);
+    local.set(nameBytes, 30);
+    chunks.push(local, f.data);
+    const cd = new Uint8Array(46 + nameBytes.length);
+    const dv2 = new DataView(cd.buffer);
+    dv2.setUint32(0, 0x02014b50, true);
+    dv2.setUint16(4, 20, true); dv2.setUint16(6, 20, true);
+    dv2.setUint16(8, 0x0800, true); dv2.setUint16(10, 0, true);
+    dv2.setUint16(12, 0, true); dv2.setUint16(14, 0x21, true);
+    dv2.setUint32(16, crc, true);
+    dv2.setUint32(20, f.data.length, true);
+    dv2.setUint32(24, f.data.length, true);
+    dv2.setUint16(28, nameBytes.length, true);
+    dv2.setUint16(30, 0, true);  // extra len
+    dv2.setUint16(32, 0, true);  // comment len
+    dv2.setUint16(34, 0, true);  // disk number start
+    dv2.setUint16(36, 0, true);  // internal attrs (36)
+    dv2.setUint32(38, 0, true);  // external attrs (38)
+    dv2.setUint32(42, offset, true); // 本地头偏移（必须是 42，不是 38）
+    cd.set(nameBytes, 46);
+    central.push(cd);
+    offset += local.length + f.data.length;
+  });
+  let cdSize = 0; central.forEach(c => cdSize += c.length);
+  const eocd = new Uint8Array(22);
+  const dv3 = new DataView(eocd.buffer);
+  dv3.setUint32(0, 0x06054b50, true);
+  dv3.setUint16(8, files.length, true);
+  dv3.setUint16(10, files.length, true);
+  dv3.setUint32(12, cdSize, true);
+  dv3.setUint32(16, offset, true);
+  return new Blob([...chunks, ...central, eocd], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+}
+
+/* ---- xlsx 各部件 XML ---- */
+function colLetter(i) {
+  let s = '';
+  i = i + 1;
+  while (i > 0) { const m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = Math.floor((i - 1) / 26); }
+  return s;
+}
+function xmlEsc(s) { return escapeHtml(s); }
+
+const XLSX_CONTENT_TYPES = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+  + '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+  + '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+  + '<Default Extension="xml" ContentType="application/xml"/>'
+  + '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
+  + '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
+  + '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'
+  + '</Types>';
+const XLSX_RELS = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+  + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+  + '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>'
+  + '</Relationships>';
+const XLSX_WB_RELS = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+  + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+  + '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>'
+  + '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>'
+  + '</Relationships>';
+/* 字体：Calibri 12（与模板一致） */
+const XLSX_STYLES = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+  + '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+  + '<fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><sz val="12"/><name val="Calibri"/></font></fonts>'
+  + '<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>'
+  + '<borders count="1"><border/></borders>'
+  + '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'
+  + '<cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'
+  + '<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs>'
+  + '<cellStyles count="1"><cellStyle name="常规" xfId="0" builtinId="0"/></cellStyles>'
+  + '</styleSheet>';
+
+function xlsxWorkbookXml(sheetName) {
+  return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+    + '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" '
+    + 'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+    + '<sheets><sheet name="' + xmlEsc(sheetName) + '" sheetId="1" r:id="rId1"/></sheets></workbook>';
+}
+function xlsxSheetXml(headers, rows, widths) {
+  let colsXml = '';
+  if (widths && widths.length) {
+    colsXml = '<cols>' + widths.map((w, i) =>
+      `<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join('') + '</cols>';
+  }
+  const all = [headers, ...rows];
+  let sd = '';
+  all.forEach((row, r) => {
+    let cellsXml = '';
+    row.forEach((v, c) => {
+      const s = v == null ? '' : String(v);
+      if (s === '') return;
+      cellsXml += `<c r="${colLetter(c)}${r+1}" s="1" t="inlineStr"><is><t xml:space="preserve">${xmlEsc(s)}</t></is></c>`;
+    });
+    sd += `<row r="${r+1}">${cellsXml}</row>`;
+  });
+  return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+    + '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+    + colsXml + '<sheetData>' + sd + '</sheetData></worksheet>';
+}
+
+function makeXlsxBlob(sheetName, headers, rows, widths) {
+  const enc = new TextEncoder();
+  const safeSheet = String(sheetName || 'Sheet1').replace(/[\\\/\?\*\[\]:]/g, '_').slice(0, 31);
+  return makeZip([
+    { name: '[Content_Types].xml', data: enc.encode(XLSX_CONTENT_TYPES) },
+    { name: '_rels/.rels', data: enc.encode(XLSX_RELS) },
+    { name: 'xl/workbook.xml', data: enc.encode(xlsxWorkbookXml(safeSheet)) },
+    { name: 'xl/_rels/workbook.xml.rels', data: enc.encode(XLSX_WB_RELS) },
+    { name: 'xl/styles.xml', data: enc.encode(XLSX_STYLES) },
+    { name: 'xl/worksheets/sheet1.xml', data: enc.encode(xlsxSheetXml(headers, rows, widths)) },
+  ]);
+}
+
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
+
+/* 保存方式：优先唤起系统分享面板 → iOS 上可选「存储到"文件"」存进手机文件 App；
+   不支持分享文件时回落到普通下载 */
+function saveBlob(blob, filename) {
+  try {
+    const file = new File([blob], filename, { type: blob.type || 'application/octet-stream' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      navigator.share({ files: [file], title: filename }).catch(() => {});
+      return 'share';
+    }
+  } catch (e) { /* 继续走下载 */ }
+  downloadBlob(blob, filename);
+  return 'download';
+}
+
+/* 真实 .xlsx 导出（列宽/表名/字体与模板一致） */
+function exportToExcel(headers, rows, filename, sheetName, widths) {
+  saveBlob(makeXlsxBlob(sheetName, headers, rows, widths), filename);
+}
+
+/* .xls 兜底（旧格式 HTML 表格） */
+function xlsHtmlBlob(headers, rows, sheetName) {
+  const thead = '<tr>' + headers.map(h => `<th>${escapeHtml(h)}</th>`).join('') + '</tr>';
+  const tbody = rows.map(row => '<tr>' + row.map(cell => {
+    const v = cell == null ? '' : String(cell);
+    return `<td>${escapeHtml(v)}</td>`;
+  }).join('') + '</tr>').join('');
+  const table = `<table>${thead}${tbody}</table>`;
+  const tmpl = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>${escapeHtml(sheetName || 'Sheet1')}</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><style>table{border-collapse:collapse}th,td{border:1px solid #000;padding:6px 10px;font-family:"Microsoft YaHei",sans-serif;font-size:12px}th{background:#D9E1F2;font-weight:bold;text-align:center}</style></head><body>${table}</body></html>`;
+  return new Blob(['\ufeff' + tmpl], { type: 'application/vnd.ms-excel' });
+}
+function exportToXlsHtml(headers, rows, filename, sheetName) {
+  saveBlob(xlsHtmlBlob(headers, rows, sheetName), filename);
+}
+
+/* ==========================================================================
+   图片压缩（800px，base64）
+   ========================================================================== */
+function compressImage(file, maxWidth) {
+  maxWidth = maxWidth || 800;
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const ratio = Math.min(1, maxWidth / img.width);
+        const w = Math.round(img.width * ratio);
+        const h = Math.round(img.height * ratio);
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h);
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', 0.78));
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+/* ==========================================================================
+   渲染
+   ========================================================================== */
+function render() {
+  renderTemplateGrid();
+  renderWorkSettings();
+  renderParams();
+  renderCalendar();
+  renderCalBar();
+  renderTable();
+  renderStats();
+}
+
+function renderTemplateGrid() {
+  const el = document.getElementById('tpl-grid');
+  el.innerHTML = Object.entries(TEMPLATES).map(([key, t]) => `
+    <div class="tpl-card ${state.selectedTemplate === key ? 'selected' : ''}" onclick="selectTemplate('${key}')">
+      <svg class="tpl-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${t.icon}</svg>
+      <div class="tpl-name">${escapeHtml(t.label)}</div>
+      <div class="tpl-desc">${escapeHtml(t.desc)}</div>
+    </div>
+  `).join('');
+}
+
+function renderWorkSettings() {
+  const ws = getWs(state.selectedTemplate);
+  document.getElementById('ws-name').value = ws.name;
+  document.getElementById('ws-file').value = ws.file;
+  document.getElementById('ws-format').value = ws.format;
+}
+
+function renderParams() {
+  const key = state.selectedTemplate;
+  document.getElementById('params-title').textContent = TEMPLATES[key].label.replace(/模板$/,'') + '参数';
+  const params = getParams(key);
+  const el = document.getElementById('params-form');
+
+  if (key === 'passage') {
+    el.innerHTML = `
+      <div class="form-row">
+        <div class="form-field"><label>细胞系</label><input type="text" data-p="细胞系" value="${escapeHtml(params.细胞系)}"></div>
+        <div class="form-field"><label>细胞代次</label><input type="text" data-p="细胞代次" value="${escapeHtml(params.细胞代次)}" placeholder="如：P7"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-field"><label>批号</label><input type="text" data-p="批号" value="${escapeHtml(params.批号)}"></div>
+        <div class="form-field"><label>日期</label><input type="date" data-p="日期" value="${escapeHtml(params.日期)}"></div>
+      </div>
+      <div class="form-row cols-3">
+        <div class="form-field"><label>组数</label><input type="text" data-p="组数" value="${escapeHtml(params.组数)}"></div>
+        <div class="form-field"><label>每组分数</label><input type="text" data-p="每组分数" value="${escapeHtml(params.每组分数)}"></div>
+        <div class="form-field"><label>操作人</label><input type="text" data-p="操作人" value="${escapeHtml(params.操作人)}"></div>
+      </div>
+      <div class="params-hint">填「组数 × 每组分数」后按模板格式自动展开成多行，操作人自动编号为「操作人 组号-序号」（如 梁栋茂 1-1、4-3）</div>
+    `;
+  } else if (key === 'infection') {
+    el.innerHTML = `
+      <div class="form-row">
+        <div class="form-field"><label>毒株名称</label><input type="text" data-p="毒株名称" value="${escapeHtml(params.毒株名称)}"></div>
+        <div class="form-field"><label>操作日期</label><input type="date" data-p="操作日期" value="${escapeHtml(params.操作日期)}"></div>
+      </div>
+      <div class="form-row cols-3">
+        <div class="form-field"><label>操作人</label><input type="text" data-p="操作人" value="${escapeHtml(params.操作人)}"></div>
+        <div class="form-field"><label>种毒批号</label><input type="text" data-p="种毒批号" value="${escapeHtml(params.种毒批号)}"></div>
+        <div class="form-field"><label>种毒加量</label><input type="text" data-p="种毒加量" value="${escapeHtml(params.种毒加量)}"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-field"><label>种毒效价</label><input type="text" data-p="种毒效价" value="${escapeHtml(params.种毒效价)}"></div>
+        <div class="form-field"><label>样本数量</label><input type="text" data-p="样本数量" value="${escapeHtml(params.样本数量)}"></div>
+      </div>
+      <div class="params-hint">填「样本数量」后自动展开成多行（每瓶一行），操作人自动编号为「操作人1、操作人2…」</div>
+    `;
+  } else if (key === 'submission') {
+    el.innerHTML = `
+      <div class="form-row">
+        <div class="form-field"><label>送样单号 *</label><input type="text" data-p="送样单号" value="${escapeHtml(params.送样单号)}" placeholder="如：XH260600115"></div>
+        <div class="form-field"><label>送检人 *</label><input type="text" data-p="送检人" value="${escapeHtml(params.送检人)}"></div>
+      </div>
+      <div class="form-row single">
+        <div class="form-field"><label>收毒日期</label><input type="date" data-p="收毒日期" value="${escapeHtml(params.收毒日期)}"></div>
+      </div>
+      <div class="form-field" style="margin-bottom:8px">
+        <label>送检项目与数量（每一项都要有数量）</label>
+        <div id="items-rows">
+          ${params.items.map((it, i) => `
+            <div class="item-row" data-idx="${i}">
+              <input type="text" class="f_项目" value="${escapeHtml(it.项目)}" placeholder="送检项目">
+              <input type="number" class="f_数量" min="0" value="${it.数量}" placeholder="数量">
+              <button class="btn btn-sm" style="color:#DC2626;background:#FEE2E2" onclick="removeItemRow(${i})">×</button>
+            </div>
+          `).join('')}
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="addItemRow()" style="margin-top:4px">+ 添加一行项目</button>
+      </div>
+    `;
+  } else if (key === 'harvest') {
+    el.innerHTML = `
+      <div class="form-row">
+        <div class="form-field"><label>名称前缀</label><input type="text" data-p="名称前缀" value="${escapeHtml(params.名称前缀)}" placeholder="如：RV-梁栋茂"></div>
+        <div class="form-field"><label>日期（无横线）</label><input type="text" data-p="日期" value="${escapeHtml(params.日期)}" placeholder="如：20260829"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-field"><label>数量</label><input type="number" data-p="数量" min="1" value="${escapeHtml(String(params.数量))}" placeholder="如：19"></div>
+        <div class="form-field"><label>起始 ID</label><input type="text" data-p="起始ID" value="${escapeHtml(params.起始ID)}" placeholder="如：GC202608240047"></div>
+      </div>
+      <div style="font-size:12px;color:#94A3B8;margin-top:6px;line-height:1.6">
+        生成示例：填「名称前缀=RV-梁栋茂 + 日期=20260823 + 数量=19 + 起始ID=GC202608240047」→ 自动生成 19 条记录，每条名称 = 前缀 + 日期 + 序号，ID 自动从「GC202608240047」递增。
+      </div>
+    `;
+  }
+
+  // 绑定参数变更（input/change 触发自动保存 + 不重渲染，避免输入时丢失焦点）
+  el.querySelectorAll('[data-p]').forEach(inp => {
+    inp.addEventListener('input', () => {
+      const p = getParams(state.selectedTemplate);
+      p[inp.dataset.p] = inp.value;
+      saveData();
+    });
+  });
+}
+
+function renderCalendar() {
+  const [y, m] = state.selectedCalMonth.split('-').map(Number);
+  const firstDay = new Date(y, m - 1, 1);
+  const lastDay = new Date(y, m, 0);
+  const startDow = (firstDay.getDay() + 6) % 7; // 周一为周首日
+  const daysInMonth = lastDay.getDate();
+  const today = todayStr();
+
+  const dows = ['一','二','三','四','五','六','日'].map(d => `<div class="cal-dow">${d}</div>`).join('');
+  let cells = '';
+  for (let i = 0; i < startDow; i++) cells += '<div class="cal-cell empty"></div>';
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const day = state.history[dateStr];
+    const hasData = day && (day.notes || (day.images && day.images.length) || (day.generated && Object.keys(day.generated).length));
+    const classes = ['cal-cell'];
+    if (dateStr === today) classes.push('today');
+    if (dateStr === state.selectedDate) classes.push('selected');
+    if (hasData) classes.push('has-data');
+    cells += `<div class="${classes.join(' ')}" onclick="openDayDetail('${dateStr}')">${d}</div>`;
+  }
+  // 精确补白：总格数凑到 7 的整数倍，最后一行对齐、不会塌行
+  const padCount = (7 - ((startDow + daysInMonth) % 7)) % 7;
+  for (let i = 0; i < padCount; i++) cells += '<div class="cal-cell empty"></div>';
+  document.getElementById('calendar-mini').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;grid-column:1/-1">
+      <button class="btn btn-secondary btn-sm" onclick="calNav(-1)">‹</button>
+      <div style="font-weight:600;font-size:14px">${fmtMonthLabel(firstDay)}</div>
+      <button class="btn btn-secondary btn-sm" onclick="calNav(1)">›</button>
+    </div>
+    ${dows}${cells}
+  `;
+}
+
+function fmtDateLabel(dateStr) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const today = todayStr();
+  if (dateStr === today) return '今天 ' + (m) + '月' + d + '日';
+  const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
+  const yStr = yesterday.getFullYear() + '-' + String(yesterday.getMonth()+1).padStart(2,'0') + '-' + String(yesterday.getDate()).padStart(2,'0');
+  if (dateStr === yStr) return '昨天 ' + (m) + '月' + d + '日';
+  return y + '年' + m + '月' + d + '日';
+}
+
+function summarizeDayRows(key, rows) {
+  if (!rows || rows.length === 0) return '';
+  if (key === 'passage') {
+    const txt = rows.map(r => `${r[0]||'-'} ${r[1]||'-'} 批号${r[2]||'-'}`).join('；');
+    return txt + `（${rows.length} 瓶）`;
+  }
+  if (key === 'infection') {
+    const txt = rows.map(r => `${r[0]||'-'} ${r[4]||'-'}`).join('；');
+    return txt + `（${rows.length} 瓶）`;
+  }
+  if (key === 'submission') {
+    const txt = rows.map(r => `${r[2]||'-'}×${r[3]||'-'}`).join('、');
+    return `单号${(rows[0]&&rows[0][0])||'-'}：${txt}（共${rows.length} 项）`;
+  }
+  if (key === 'harvest') {
+    const first = rows[0] && rows[0][0];
+    const last = rows[rows.length - 1] && rows[rows.length - 1][0];
+    return `${first}${rows.length > 1 ? ' ~ ' + last : ''}（共 ${rows.length} 条编号）`;
+  }
+  return rows.length + ' 条';
+}
+
+/* ============ 紧凑日期条 ============ */
+function renderCalBar() {
+  const label = document.getElementById('cal-bar-label');
+  const sub = document.getElementById('cal-bar-sub');
+  if (label) label.textContent = fmtDateLabel(state.selectedDate);
+  if (sub) {
+    const parts = [];
+    const day = state.history[state.selectedDate];
+    const genCount = day && day.generated ? Object.values(day.generated).filter(g => g && g.rows && g.rows.some(r => r.some(c => String(c||'').trim() !== ''))).length : 0;
+    if (genCount > 0) parts.push(genCount + ' 项工作');
+    if (day && day.images && day.images.length) parts.push(day.images.length + ' 张图');
+    if (day && day.notes) parts.push('有笔记');
+    sub.textContent = parts.length ? parts.join(' · ') : '无记录';
+  }
+  const sd = document.getElementById('select-date');
+  if (sd) sd.value = state.selectedDate;
+}
+
+function toggleCal(e) {
+  if (e && e.target && e.target.id === 'select-date') return;
+  const wrap = document.getElementById('cal-wrap');
+  const arrow = document.getElementById('cal-arrow');
+  if (!wrap) return;
+  const open = wrap.style.display !== 'none';
+  wrap.style.display = open ? 'none' : 'block';
+  if (arrow) arrow.classList.toggle('open', !open);
+  if (!open) renderCalendar(); // 展开时刷新
+}
+
+/* ============ 当天详情页 ============ */
+function openDayDetail(date) {
+  if (!isValidDate(date)) return;
+  selectDate(date);
+  state.dayDetailDate = date;
+  renderDayDetail();
+  document.getElementById('dayDetailOverlay').classList.add('open');
+}
+
+function closeDayDetail() {
+  document.getElementById('dayDetailOverlay').classList.remove('open');
+  state.dayDetailDate = null;
+}
+
+function ddNav(delta) {
+  const d = new Date(state.dayDetailDate + 'T00:00:00');
+  d.setDate(d.getDate() + delta);
+  const dateStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  openDayDetail(dateStr);
+}
+
+function renderDayDetail() {
+  const date = state.dayDetailDate || state.selectedDate;
+  const day = state.history[date];
+  document.getElementById('dd-title').textContent = fmtDateLabel(date);
+
+  const tplOrder = ['passage', 'infection', 'harvest', 'submission'];
+  let items = '';
+  tplOrder.forEach(key => {
+    const gen = day && day.generated && day.generated[key];
+    const headers = (gen && gen.headers && gen.headers.length) ? gen.headers : TEMPLATES[key].headers;
+    const rows = (gen && gen.rows && gen.rows.filter(r => r.some(c => String(c||'').trim() !== ''))) || [];
+    if (rows.length > 0) {
+      const th = headers.map(h => `<th>${escapeHtml(h)}</th>`).join('');
+      const trs = rows.map(r =>
+        '<tr>' + headers.map((_, c) =>
+          `<td>${escapeHtml(r[c] == null ? '' : r[c])}</td>`).join('') + '</tr>'
+      ).join('');
+      items += `
+        <div class="dd-tpl-block">
+          <div class="dd-tpl-head" onclick="viewDayTemplate('${key}')">
+            <span class="dd-tpl-label">${TEMPLATES[key].label}</span>
+            <span class="dd-view-link">${rows.length} 条 · 查看/编辑 →</span>
+          </div>
+          <div class="dd-mini-wrap">
+            <table class="dd-mini-table"><thead><tr>${th}</tr></thead><tbody>${trs}</tbody></table>
+          </div>
+        </div>
+      `;
+    }
+  });
+
+  const notes = (day && day.notes) || '';
+  const images = (day && day.images) || [];
+  const body = document.getElementById('dd-body');
+  body.innerHTML = `
+    <div class="dd-section">
+      <div class="dd-section-title">📋 当天完成情况</div>
+      ${items || '<div class="dd-empty">这一天还没有工作记录<br>（切到该日期后选模板生成，或点「导出 Excel」建空表）</div>'}
+    </div>
+    <div class="dd-section">
+      <div class="dd-section-title">✏️ 备注</div>
+      <textarea class="dd-note" id="dd-note-input" placeholder="记录这一天的备注……">${escapeHtml(notes)}</textarea>
+      <div class="dd-saved-tip">备注、照片会随下方「保存当天记录」一起写入本地存储</div>
+    </div>
+    <div class="dd-section">
+      <div class="dd-section-title">📷 照片（${images.length}/9）</div>
+      <div class="dd-photo-bar">
+        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('dd-image-input').click()">＋ 添加照片</button>
+        <input type="file" id="dd-image-input" accept="image/*" multiple style="display:none" onchange="onDayImages(this)">
+        <span class="dd-photo-count">自动压缩保存</span>
+      </div>
+      <div class="dd-images" id="dd-images">
+        ${images.map((img, i) => `
+          <div class="dd-img">
+            <img src="${img}" onclick="viewImage('${img}')">
+            <button class="del-img" onclick="removeDayImage(${i})">×</button>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+
+/* 详情页「保存当天记录」：备注 + 日历状态一起落盘 */
+function saveDayDetail() {
+  const date = state.dayDetailDate || state.selectedDate;
+  const day = ensureDay(date);
+  const noteEl = document.getElementById('dd-note-input');
+  if (noteEl) day.notes = noteEl.value;
+  saveData();
+  renderCalBar();
+  renderCalendar();
+  showToast('已保存 ' + fmtDateLabel(date) + ' 的记录', 'success');
+}
+
+/* 详情页导出：把当天所有已生成的数据各存一个文件（走系统分享面板） */
+function exportDayExcel() {
+  const date = state.dayDetailDate || state.selectedDate;
+  const day = state.history[date];
+  const keys = ['passage', 'infection', 'harvest', 'submission'].filter(k => {
+    const gen = day && day.generated && day.generated[k];
+    return gen && gen.rows && gen.rows.some(r => r.some(c => String(c || '').trim() !== ''));
+  });
+  if (keys.length === 0) {
+    showToast('这一天还没有数据可导出', 'error');
+    return;
+  }
+  saveDayDetail();
+
+  // 先一次性把所有文件准备好（保持用户手势，分享面板才能弹出）
+  const out = keys.map(key => {
+    const gen = day.generated[key];
+    const tpl = TEMPLATES[key];
+    const ws = getWs(key);
+    const ext = ws.format || '.xlsx';
+    const headers = (gen.headers && gen.headers.length) ? gen.headers : tpl.headers;
+    const sheet = (ws.name || tpl.defaultWs.name || 'Sheet1').replace(/[\\\/\?\*\[\]:]/g, '_').slice(0, 31);
+    const filename = `${ws.file || tpl.label}-${date.replace(/-/g, '')}${ext}`;
+    const blob = ext === '.xls'
+      ? xlsHtmlBlob(headers, gen.rows, sheet)
+      : makeXlsxBlob(sheet, headers, gen.rows, (tpl.widths || []).slice(0, headers.length));
+    return { blob, filename };
+  });
+
+  try {
+    const files = out.map(o => new File([o.blob], o.filename, { type: o.blob.type || 'application/octet-stream' }));
+    if (navigator.canShare && navigator.canShare({ files })) {
+      navigator.share({ files, title: date + ' 实验记录' }).catch(() => {});
+      showToast(`${files.length} 个文件待保存`, 'success');
+      return;
+    }
+  } catch (e) { /* 回落下载 */ }
+  out.forEach((o, i) => setTimeout(() => downloadBlob(o.blob, o.filename), i * 500));
+  showToast(`${out.length} 个文件已生成`, 'success');
+}
+
+function viewDayTemplate(key) {
+  closeDayDetail();
+  selectTemplate(key);
+  const t = document.getElementById('data-table');
+  if (t && t.scrollIntoView) setTimeout(() => t.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+}
+
+function renderTable() {
+  const t = getCurrentTable();
+  // 如果 state.tables[tpl] 为空（首次或刚切换），尝试从 history[date].generated[tpl] 载入
+  if ((!t.rows || t.rows.length === 0) && (!t.headers || t.headers.length === 0)) {
+    const hist = getCurrentHistoryTable();
+    if (hist) {
+      state.tables[state.selectedTemplate] = { headers: hist.headers.slice(), rows: hist.rows.map(r => r.slice()) };
+    } else {
+      state.tables[state.selectedTemplate] = { headers: TEMPLATES[state.selectedTemplate].headers.slice(), rows: [TEMPLATES[state.selectedTemplate].headers.map(()=>'')] };
+    }
+  }
+
+  const t2 = getCurrentTable();
+  const table = document.getElementById('data-table');
+  document.getElementById('row-count-text').textContent = `${t2.rows.length} 行`;
+  document.getElementById('select-date').value = state.selectedDate;
+
+  const hdr = t2.headers.map((h, c) => `
+    <th>
+      <input class="th-input" value="${escapeHtml(h)}" oninput="updateHeader(${c}, this.value)" placeholder="列名">
+      <button class="th-del" onclick="deleteCol(${c})">×</button>
+    </th>
+  `).join('');
+  const rows = t2.rows.map((row, r) => `
+    <tr>${t2.headers.map((_, c) => `
+      <td><input class="td-input" value="${escapeHtml(row[c] == null ? '' : row[c])}" oninput="updateCell(${r}, ${c}, this.value)"></td>
+    `).join('')}</tr>
+  `).join('');
+  table.innerHTML = `<thead><tr>${hdr}</tr></thead><tbody>${rows}</tbody>`;
+}
+
+function renderStats() {
+  const t = getCurrentTable();
+  const stats = document.getElementById('stats-grid');
+  const hint = document.getElementById('stats-hint');
+  // 找出数量列（headers 含"数量"或"数"字 + 第一列数值的列）
+  const qtyColIdx = t.headers.findIndex(h => /数[量]?$/.test(h || ''));
+  if (qtyColIdx < 0) {
+    stats.innerHTML = `<div class="stat-box s-info" style="grid-column:1/-1"><div class="label">当前模板无可统计的数字列</div><div class="value" style="font-size:14px;color:#475569;font-weight:500">切换到「送检」或「接毒」模板可查看样品数量统计</div></div>`;
+    hint.textContent = '';
+    return;
+  }
+  const values = t.rows.map(r => parseFloat(String(r[qtyColIdx] || '').replace(/[^\d.-]/g,''))).filter(v => !isNaN(v) && isFinite(v));
+  if (values.length === 0) {
+    stats.innerHTML = `<div class="stat-box s-info" style="grid-column:1/-1"><div class="label">「${t.headers[qtyColIdx]}」列暂无有效数字</div><div class="value" style="font-size:14px;color:#475569;font-weight:500">在表格里填入数字后，这里会自动统计</div></div>`;
+    hint.textContent = `统计列：${t.headers[qtyColIdx]}`;
+    return;
+  }
+  const total = values.reduce((a,b) => a+b, 0);
+  const avg = total / values.length;
+  const max = Math.max(...values);
+  const min = Math.min(...values);
+  stats.innerHTML = `
+    <div class="stat-box s-primary"><div class="label">${escapeHtml(t.headers[qtyColIdx])} · 总计</div><div class="value">${total}</div></div>
+    <div class="stat-box s-info"><div class="label">${escapeHtml(t.headers[qtyColIdx])} · 平均</div><div class="value">${avg.toFixed(2)}</div></div>
+    <div class="stat-box s-success"><div class="label">${escapeHtml(t.headers[qtyColIdx])} · 最大</div><div class="value">${max}</div></div>
+    <div class="stat-box s-warn"><div class="label">${escapeHtml(t.headers[qtyColIdx])} · 最小</div><div class="value">${min}</div></div>
+  `;
+  hint.textContent = `统计列：${t.headers[qtyColIdx]} · 共 ${values.length} 个有效数值`;
+}
+
+/* ==========================================================================
+   交互函数
+   ========================================================================== */
+function selectTemplate(key) {
+  state.selectedTemplate = key;
+  // 切模板时，优先载入该日期的 history；没有则自动按参数生成数据
+  const hist = getCurrentHistoryTable();
+  if (hist) {
+    state.tables[key] = { headers: hist.headers.slice(), rows: hist.rows.map(r => r.slice()) };
+  } else {
+    state.tables[key] = { headers: TEMPLATES[key].headers.slice(), rows: [] };
+    autoFillFromParams();
+  }
+  saveData();
+  render();
+  showToast('已切换到 ' + TEMPLATES[key].label, 'success');
+}
+
+function selectDate(date) {
+  if (!isValidDate(date)) return;
+  state.selectedDate = date;
+  state.selectedCalMonth = date.slice(0, 7);
+  // 切日期：只读该日期该模板的历史数据；当天无历史则自动按参数生成
+  // （过去/未来的日期不自动生成，避免浏览日历时污染历史记录）
+  const hist = getCurrentHistoryTable();
+  if (hist) {
+    state.tables[state.selectedTemplate] = { headers: hist.headers.slice(), rows: hist.rows.map(r => r.slice()) };
+  } else if (date === todayStr()) {
+    state.tables[state.selectedTemplate] = { headers: TEMPLATES[state.selectedTemplate].headers.slice(), rows: [] };
+    autoFillFromParams();
+  } else {
+    state.tables[state.selectedTemplate] = { headers: TEMPLATES[state.selectedTemplate].headers.slice(), rows: [] };
+  }
+  saveData();
+  render();
+}
+
+function calNav(delta) {
+  const [y, m] = state.selectedCalMonth.split('-').map(Number);
+  const d = new Date(y, m - 1 + delta, 1);
+  state.selectedCalMonth = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+  saveData();
+  renderCalendar();
+}
+
+function readParamsFromForm() {
+  const key = state.selectedTemplate;
+  const params = getParams(key);
+  document.querySelectorAll('[data-p]').forEach(inp => {
+    params[inp.dataset.p] = inp.value;
+  });
+  // 送检：读取项目行
+  if (key === 'submission') {
+    const rows = [];
+    document.querySelectorAll('#items-rows .item-row').forEach(row => {
+      const 项目 = (row.querySelector('.f_项目') || {}).value || '';
+      const 数量 = (row.querySelector('.f_数量') || {}).value || '';
+      const p = 项目.trim();
+      if (p) rows.push({ 项目: p, 数量: 数量 === '' ? 0 : (parseInt(数量, 10) || 0) });
+    });
+    params.items = rows.length > 0 ? rows : [{ 项目: '', 数量: 0 }];
+  }
+  saveData();
+  return params;
+}
+
+/* ===== 行生成（共享逻辑）===== */
+function syncDateParams(params) {
+  // 日期类参数自动同步为当前选中日期
+  const key = state.selectedTemplate;
+  const d = state.selectedDate || todayStr();
+  if (key === 'passage') params.日期 = d;
+  else if (key === 'infection') params.操作日期 = d;
+  else if (key === 'submission') params.收毒日期 = d;
+  else if (key === 'harvest') params.日期 = d.replace(/-/g, '');
+}
+
+function buildRowsFromParams(key, params) {
+  // 静默构建行，返回 { headers, rows, error }
+  // 日期统一输出无横线格式（如 20260829），与模板一致
+  const cd = v => String(v == null ? '' : v).replace(/-/g, '');
+  const headers = TEMPLATES[key].headers.slice();
+  let rows = [], error = '';
+  if (key === 'passage') {
+    // 模板规律：每瓶一行，操作人 = "操作人 组号-序号"（如 梁栋茂 1-1 ~ 4-3）
+    const groups = parseInt(params.组数, 10) || 0;
+    const per = parseInt(params.每组分数, 10) || 0;
+    if (groups > 0 && per > 0) {
+      for (let g = 1; g <= groups; g++) {
+        for (let s = 1; s <= per; s++) {
+          rows.push([ params.细胞系, params.细胞代次, params.批号, cd(params.日期), `${params.操作人} ${g}-${s}` ]);
+        }
+      }
+    } else {
+      rows = [[ params.细胞系, params.细胞代次, params.批号, cd(params.日期), params.操作人 ]];
+    }
+  } else if (key === 'infection') {
+    // 模板规律：每瓶一行，操作人 = "操作人序号"（如 梁栋茂1 ~ 梁栋茂5）
+    const n = parseInt(params.样本数量, 10) || 0;
+    if (n > 0) {
+      for (let i = 1; i <= n; i++) {
+        rows.push([ params.毒株名称, cd(params.操作日期), `${params.操作人}${i}`, params.种毒批号, params.种毒加量, params.种毒效价 ]);
+      }
+    } else {
+      rows = [[ params.毒株名称, cd(params.操作日期), params.操作人, params.种毒批号, params.种毒加量, params.种毒效价 ]];
+    }
+  } else if (key === 'submission') {
+    const valid = (params.items || []).filter(it => it.项目);
+    if (!params.送样单号 || !params.送检人) error = '请填写带 * 的必填字段（送样单号 / 送检人）';
+    else if (valid.length === 0) error = '至少要有一个送检项目';
+    else {
+      const missingQty = valid.filter(it => !(it.数量 > 0));
+      if (missingQty.length > 0) error = `「${missingQty[0].项目}」还没填数量`;
+      else rows = valid.map(it => [ params.送样单号, params.送检人, it.项目, it.数量, cd(params.收毒日期) ]);
+    }
+  } else if (key === 'harvest') {
+    // 模板规律：名称 = 前缀-序号-日期（如 RV-梁栋茂-1-20260824），id 列重复两份
+    const n = parseInt(params.数量, 10) || 0;
+    if (n < 1) error = '请填写数量';
+    else if (!params.名称前缀 || !params.日期) error = '请填写名称前缀和日期';
+    else {
+      for (let i = 1; i <= n; i++) {
+        const label = `${params.名称前缀}-${i}-${params.日期}`;
+        let id = '';
+        if (params.起始ID) {
+          const re = params.起始ID.match(/^(.*?)(\d+)$/);
+          if (re) {
+            const baseNum = parseInt(re[2], 10);
+            const padded = String(baseNum + i - 1).padStart(re[2].length, '0');
+            id = re[1] + padded;
+          } else {
+            id = params.起始ID;
+          }
+        }
+        rows.push([ label, id, id ]);
+      }
+    }
+  }
+  return { headers, rows, error };
+}
+
+function autoFillFromParams() {
+  // 无当日历史数据时，选中模板/日期即自动按参数生成数据填入表格
+  const key = state.selectedTemplate;
+  if (getCurrentHistoryTable()) return false; // 已有当日数据，不覆盖
+  const params = getParams(key);
+  syncDateParams(params);
+  const built = buildRowsFromParams(key, params);
+  if (built.error || built.rows.length === 0) return false;
+  state.tables[key] = { headers: built.headers, rows: built.rows };
+  saveDataAndPersist();
+  return true;
+}
+
+function regenerate() {
+  const key = state.selectedTemplate;
+  const params = readParamsFromForm();
+  const tpl = TEMPLATES[key];
+  const built = buildRowsFromParams(key, params);
+  if (built.error) { showToast(built.error, 'error'); return; }
+  const headers = built.headers;
+  const rows = built.rows;
+
+  state.tables[key] = { headers, rows };
+  // 写入历史
+  const day = ensureDay(state.selectedDate);
+  day.generated = day.generated || {};
+  day.generated[key] = { headers: headers.slice(), rows: rows.map(r => r.slice()) };
+  saveData();
+  render();
+  showToast(`已生成 ${rows.length} 行`, 'success');
+}
+
+function addRow() {
+  const t = getCurrentTable();
+  const cols = (t.headers && t.headers.length) || TEMPLATES[state.selectedTemplate].headers.length;
+  t.rows.push(Array(cols).fill(''));
+  saveDataAndPersist();
+  renderTable();
+  renderStats();
+}
+function addCol() {
+  const t = getCurrentTable();
+  const name = prompt('列名（中文），如：备注') || ('列' + (t.headers.length + 1));
+  t.headers.push(name);
+  t.rows.forEach(r => r.push(''));
+  saveDataAndPersist();
+  renderTable();
+  renderStats();
+}
+function deleteCol(c) {
+  const t = getCurrentTable();
+  if (t.headers.length <= 1) { showToast('至少保留一列', 'error'); return; }
+  if (!confirm(`删除列「${t.headers[c]}」？`)) return;
+  t.headers.splice(c, 1);
+  t.rows.forEach(r => r.splice(c, 1));
+  saveDataAndPersist();
+  renderTable();
+  renderStats();
+}
+function clearTable() {
+  if (!confirm('清空当前表格？')) return;
+  const t = getCurrentTable();
+  const cols = t.headers.length || TEMPLATES[state.selectedTemplate].headers.length;
+  t.rows = [Array(cols).fill('')];
+  saveDataAndPersist();
+  renderTable();
+  renderStats();
+  showToast('已清空', 'success');
+}
+function updateCell(r, c, val) {
+  const t = getCurrentTable();
+  if (!t.rows[r]) t.rows[r] = [];
+  t.rows[r][c] = val;
+  saveDataAndPersist();
+  // 实时统计可重（cheap）
+  renderStats();
+}
+function updateHeader(c, val) {
+  const t = getCurrentTable();
+  t.headers[c] = val;
+  saveDataAndPersist();
+  renderStats();
+}
+function saveDataAndPersist() {
+  // 把当前表格写入历史
+  const day = ensureDay(state.selectedDate);
+  day.generated = day.generated || {};
+  day.generated[state.selectedTemplate] = {
+    headers: state.tables[state.selectedTemplate].headers.slice(),
+    rows: state.tables[state.selectedTemplate].rows.map(r => r.slice())
+  };
+  saveData();
+}
+
+/* ============ 送检项目行 ============ */
+function addItemRow() {
+  const box = document.getElementById('items-rows');
+  const idx = box.children.length;
+  box.insertAdjacentHTML('beforeend', `
+    <div class="item-row" data-idx="${idx}">
+      <input type="text" class="f_项目" value="" placeholder="送检项目">
+      <input type="number" class="f_数量" min="0" value="" placeholder="数量">
+      <button class="btn btn-sm" style="color:#DC2626;background:#FEE2E2" onclick="removeItemRow(${idx})">×</button>
+    </div>
+  `);
+}
+function removeItemRow(i) {
+  const row = document.querySelector(`#items-rows .item-row[data-idx="${i}"]`);
+  if (row) row.remove();
+}
+
+/* ============ Excel 导出（FAB） ============ */
+function exportCurrentExcel() {
+  const key = state.selectedTemplate;
+  const t = getCurrentTable();
+  if (!t.rows || t.rows.length === 0 || t.rows.every(r => r.every(c => !c && c !== 0))) {
+    showToast('表格为空，先点「重新生成」或手动录入数据', 'error');
+    return;
+  }
+  const ws = getWs(key);
+  const ext = ws.format || '.xlsx';
+  const filename = (ws.file || TEMPLATES[key].label) + '-' + todayCompact() + ext;
+  const safeSheet = (ws.name || TEMPLATES[key].defaultWs.name || 'Sheet1').replace(/[\\\/\?\*\[\]:]/g, '_').slice(0, 31);
+  const headers = t.headers.length ? t.headers : TEMPLATES[key].headers;
+  // 列宽取模板宽度（按实际列数截取）
+  const widths = (TEMPLATES[key].widths || []).slice(0, headers.length);
+  if (ext === '.xls') {
+    exportToXlsHtml(headers, t.rows, filename, safeSheet);
+  } else {
+    exportToExcel(headers, t.rows, filename, safeSheet, widths);
+  }
+  showToast(`已生成 ${filename}`, 'success');
+}
+
+/* ============ 笔记：详情页内备注 + 图片 ============ */
+async function onDayImages(input) {
+  const files = Array.from(input.files || []);
+  if (!files.length) return;
+  const day = ensureDay(state.dayDetailDate || state.selectedDate);
+  day.images = day.images || [];
+  let saved = 0;
+  for (const f of files) {
+    if (day.images.length >= 9) { showToast('每天最多 9 张图片', 'error'); break; }
+    try {
+      const dataUrl = await compressImage(f, 800);
+      day.images.push(dataUrl);
+      saved++;
+    } catch (e) { console.warn('压缩失败', e); }
+  }
+  saveData();
+  if (state.dayDetailDate) renderDayDetail();
+  renderCalBar();
+  renderCalendar();
+  input.value = '';
+  if (saved > 0) showToast(`已保存 ${saved} 张图片`, 'success');
+}
+function removeDayImage(i) {
+  const day = ensureDay(state.dayDetailDate || state.selectedDate);
+  if (!confirm('删除这张图片？')) return;
+  day.images.splice(i, 1);
+  saveData();
+  if (state.dayDetailDate) renderDayDetail();
+  renderCalBar();
+  renderCalendar();
+}
+function viewImage(src) {
+  const v = document.getElementById('imageViewer');
+  document.getElementById('imageViewerImg').src = src;
+  v.style.display = 'flex';
+}
+function closeImageViewer() { document.getElementById('imageViewer').style.display = 'none'; }
+
+/* ============ 数据管理 ============ */
+function openDataManager() {
+  const totalRows = Object.values(state.tables).reduce((s, t) => s + (t.rows ? t.rows.length : 0), 0);
+  const totalDays = Object.keys(state.history).length;
+  const html = `
+    <div class="modal-title">数据管理 <button class="modal-close" onclick="closeModal()">×</button></div>
+    <div style="font-size:13px;color:#475569;line-height:1.8">
+      当前已记录 <strong>${totalDays}</strong> 个日期，<strong>${totalRows}</strong> 行表格数据，所有数据保存在浏览器本地存储。
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-top:14px">
+      <button class="btn btn-primary" onclick="doExportJson()">📥 导出 JSON 备份</button>
+      <button class="btn btn-secondary" onclick="document.getElementById('importJsonInput').click()">📤 导入 JSON</button>
+      <input type="file" id="importJsonInput" accept=".json,application/json" style="display:none" onchange="doImportJson(this)">
+      <button class="btn btn-warn" onclick="doClearAll()">🗑 清空全部数据</button>
+    </div>
+    <div style="font-size:12px;color:#94A3B8;margin-top:14px;line-height:1.6">
+      备份文件可在多设备之间迁移。建议每周备份一次到网盘（数据本身已经在云端链接里了）。
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal()">关闭</button>
+    </div>
+  `;
+  openModal(html);
+}
+function doExportJson() {
+  const blob = new Blob(['\ufeff' + JSON.stringify(state, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `lab-workspace-backup-${todayStr()}.json`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  showToast('已导出备份', 'success');
+}
+function doImportJson(input) {
+  const file = (input.files || [])[0];
+  if (!file) return;
+  if (!confirm('导入会替换当前所有数据，确定继续？')) { input.value = ''; return; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const incoming = JSON.parse(e.target.result);
+      if (!incoming || typeof incoming !== 'object') throw new Error('文件格式不对');
+      state = incoming;
+      // 补全缺失字段
+      if (!state.tables) state.tables = { passage:{headers:[],rows:[]}, infection:{headers:[],rows:[]}, submission:{headers:[],rows:[]}, harvest:{headers:[],rows:[]} };
+      if (!state.history) state.history = {};
+      if (!state.selectedDate) state.selectedDate = todayStr();
+      saveData();
+      closeModal();
+      render();
+      showToast('已导入', 'success');
+    } catch (err) {
+      showToast('导入失败：' + err.message, 'error');
+    }
+    input.value = '';
+  };
+  reader.readAsText(file);
+}
+function doClearAll() {
+  if (!confirm('⚠️ 真的要清空所有数据吗？此操作不可恢复！')) return;
+  if (!confirm('再次确认：清空后将丢失所有记录、笔记和图片，继续吗？')) return;
+  localStorage.removeItem(STORAGE_KEY);
+  state = defaultState();
+  saveData();
+  closeModal();
+  render();
+  showToast('已清空全部数据', 'success');
+}
+
+/* ============ 模态框 ============ */
+function openModal(html) {
+  document.getElementById('modalBox').innerHTML = html;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('open');
+  document.getElementById('modalBox').innerHTML = '';
+}
+
+/* ============ Toast ============ */
+let toastTimer = null;
+function showToast(msg, type) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show' + (type ? ' ' + type : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.className = 'toast'; }, 2400);
+}
+
+/* ============ 初始化 ============ */
+function init() {
+  state = loadState();
+  document.getElementById('select-date').addEventListener('change', e => selectDate(e.target.value));
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      closeModal();
+      closeImageViewer();
+    }
+  });
+  // 工作表设置变更：自动保存
+  ['ws-name','ws-file','ws-format'].forEach(id => {
+    document.getElementById(id).addEventListener('input', () => {
+      const ws = getWs(state.selectedTemplate);
+      ws.name = document.getElementById('ws-name').value;
+      ws.file = document.getElementById('ws-file').value;
+      ws.format = document.getElementById('ws-format').value;
+      saveData();
+    });
+    document.getElementById(id).addEventListener('change', () => {
+      const ws = getWs(state.selectedTemplate);
+      ws.name = document.getElementById('ws-name').value;
+      ws.file = document.getElementById('ws-file').value;
+      ws.format = document.getElementById('ws-format').value;
+      saveData();
+    });
+  });
+  // 首次打开：当前模板 + 当前日期若无历史数据，自动按参数生成
+  const t0 = state.tables[state.selectedTemplate];
+  if ((!t0 || (t0.rows || []).length === 0) && !getCurrentHistoryTable()) {
+    autoFillFromParams();
+  }
+  render();
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
+</script>
+</body>
+</html>
